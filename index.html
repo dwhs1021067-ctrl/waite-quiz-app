@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="外特刷題">
+<meta name="theme-color" content="#FAFAF8">
+<title>外特刷題</title>
+<style>
+:root{
+  --bg:#FAFAF8;
+  --card:#FFFFFF;
+  --line:#E5E3DD;
+  --line-2:#F0EEE9;
+  --tx:#17181C;
+  --tx-2:#6B7078;
+  --tx-3:#9A9EA6;
+  --brand:#2C4A7C;
+  --brand-soft:#EDF1F8;
+  --ok:#0F7A57;
+  --ok-soft:#E8F4EF;
+  --no:#C0392B;
+  --no-soft:#FBEDEB;
+  --warn:#9A6B12;
+  --warn-soft:#FBF3E2;
+  --font:"PingFang TC","Noto Sans TC","Microsoft JhengHei","Hiragino Sans",system-ui,-apple-system,sans-serif;
+  --num:ui-monospace,"SF Mono",Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]):not([data-theme="dark"]){
+    --bg:#131417; --card:#1C1E22; --line:#2E3138; --line-2:#25272C;
+    --tx:#EDEDEA; --tx-2:#9BA1AA; --tx-3:#6E747D;
+    --brand:#7FA5DC; --brand-soft:#20293A;
+    --ok:#4FC79B; --ok-soft:#16302A;
+    --no:#F08578; --no-soft:#33201E;
+    --warn:#E0B45C; --warn-soft:#332A18;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131417; --card:#1C1E22; --line:#2E3138; --line-2:#25272C;
+  --tx:#EDEDEA; --tx-2:#9BA1AA; --tx-3:#6E747D;
+  --brand:#7FA5DC; --brand-soft:#20293A;
+  --ok:#4FC79B; --ok-soft:#16302A;
+  --no:#F08578; --no-soft:#33201E;
+  --warn:#E0B45C; --warn-soft:#332A18;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font);background:var(--bg);color:var(--tx);
+  font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;
+  overscroll-behavior-y:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+input,textarea,select{font-size:16px;font-family:inherit}
+
+#app{min-height:100dvh;padding-top:env(safe-area-inset-top)}
+.screen{display:none;padding:0 16px 110px}
+.screen.on{display:block}
+
+/* ---- 標頭 ---- */
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px 16px 12px;
+}
+.top h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.04em}
+.top .r{font-size:13px;color:var(--tx-2)}
+.top .side{display:flex;align-items:center;gap:10px}
+.themeBtn{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line);border-radius:999px;
+  padding:6px 12px 6px 10px;font-size:13px;color:var(--tx-2);
+  background:var(--card);
+}
+.themeBtn .ic{font-size:15px;line-height:1}
+
+/* ---- 區塊標題 ---- */
+h2.sec{
+  font-size:13px;font-weight:600;color:var(--tx-2);
+  margin:26px 0 9px;letter-spacing:.06em;
+}
+h2.sec:first-child{margin-top:14px}
+
+/* ---- 手風琴清單（冒險頁） ---- */
+.accSection{margin-top:12px}
+.accSection:first-child{margin-top:16px}
+.accHead{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:14px 15px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);
+}
+.accHead[aria-expanded="true"]{border-radius:var(--r) var(--r) 0 0;border-bottom-color:transparent}
+.accTitle{font-size:14.5px;font-weight:700;color:var(--tx)}
+.accSub{font-family:var(--num);font-size:12px;color:var(--tx-2);margin-left:auto}
+.accChevron{font-size:12px;color:var(--tx-3);flex:none;width:14px;text-align:center}
+.accBody{
+  background:var(--card);border:1px solid var(--line);border-top:none;
+  border-radius:0 0 var(--r) var(--r);padding:13px 15px 15px;
+}
+.accBody .card{border-radius:var(--r)}
+.accBody > .card:first-child{margin-top:0}
+
+
+/* ---- 卡片 ---- */
+.card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden;
+}
+.card + .card{margin-top:10px}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:14px 15px;
+}
+.row + .row{border-top:1px solid var(--line-2)}
+.row .lab{font-size:16px;font-weight:500}
+.row .hint{font-size:13px;color:var(--tx-2);margin-top:3px;line-height:1.5}
+.row .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 13px;font-size:13px;border-radius:8px;white-space:nowrap}
+.pad{padding:15px}
+
+/* ---- 分段控制 ---- */
+.seg{display:flex;gap:4px;background:var(--line-2);padding:4px;border-radius:11px}
+.seg button{
+  flex:1;text-align:center;padding:10px 6px;border-radius:8px;
+  font-size:15px;color:var(--tx-2);font-weight:500;
+}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--tx);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.09)}
+
+/* ---- 標籤 ---- */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  border:1px solid var(--line);background:var(--card);
+  border-radius:999px;padding:9px 14px;font-size:15px;color:var(--tx-2);
+}
+.chip .n{font-family:var(--num);font-size:12px;opacity:.65;margin-left:5px}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]):not([data-theme="dark"]) .chip[aria-pressed="true"]{color:#101318} }
+:root[data-theme="dark"] .chip[aria-pressed="true"]{color:#101318}
+
+/* ---- 開關 ---- */
+.sw{width:50px;height:30px;border-radius:15px;background:var(--line);flex:none;position:relative;transition:background .18s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .18s}
+.sw[aria-pressed="true"]{background:var(--ok)}
+.sw[aria-pressed="true"]::after{transform:translateX(20px)}
+
+.step{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.step button{width:42px;height:38px;text-align:center;font-size:20px;color:var(--brand);line-height:36px}
+.step .v{font-family:var(--num);font-size:16px;min-width:42px;text-align:center}
+
+/* ---- 按鈕 ---- */
+.btn{
+  display:block;width:100%;text-align:center;padding:16px;
+  background:var(--brand);color:#fff;border-radius:12px;
+  font-size:17px;font-weight:600;margin-top:14px;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]):not([data-theme="dark"]) .btn{color:#101318} }
+:root[data-theme="dark"] .btn{color:#101318}
+.btn:disabled{background:var(--line);color:var(--tx-3)}
+.btn.sec{background:var(--card);border:1px solid var(--line);color:var(--tx);font-weight:500}
+.btn.tiny{padding:13px;font-size:15px}
+
+.empty{text-align:center;padding:56px 22px;color:var(--tx-2);font-size:15px;line-height:1.85}
+.empty b{display:block;font-size:18px;color:var(--tx);margin-bottom:10px;font-weight:600}
+
+/* ---- 底部導覽 ---- */
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
+  background:var(--card);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.tabs button{flex:1;text-align:center;padding:10px 0 8px;color:var(--tx-3);font-size:12px}
+.tabs .ic{display:block;font-size:20px;line-height:1.25}
+.tabs button[aria-pressed="true"]{color:var(--brand)}
+.tabs .badge{
+  display:inline-block;min-width:17px;padding:0 4px;height:17px;line-height:17px;
+  background:var(--no);color:#fff;border-radius:9px;
+  font-family:var(--num);font-size:10.5px;text-align:center;
+  position:relative;top:-8px;left:2px;
+}
+
+/* ================= 作答 ================= */
+.qtop{
+  display:flex;align-items:center;gap:12px;padding:14px 0 12px;
+}
+.qtop .x{font-size:26px;color:var(--tx-2);line-height:1;width:28px;flex:none}
+.qtop .mid{flex:1;font-size:13.5px;color:var(--tx-2)}
+.qtop .clk{font-family:var(--num);font-size:14px;color:var(--tx-2);flex:none}
+.qtop .clk.warn{color:var(--no);font-weight:600}
+.prog{height:4px;background:var(--line-2);border-radius:2px;overflow:hidden;margin-bottom:14px}
+.prog i{display:block;height:100%;background:var(--brand);transition:width .3s}
+
+.q{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 16px}
+
+.miniMon{
+  display:flex;align-items:center;gap:10px;
+  margin:-18px -16px 14px;padding:11px 16px;
+  background:var(--line-2);color:var(--tx-2);
+  font-size:13.5px;font-weight:600;border-radius:var(--r) var(--r) 0 0;
+  transition:background .3s,color .3s;
+}
+.miniMonIcon{font-size:23px;line-height:1;flex:none;image-rendering:pixelated;transition:transform .35s}
+.miniMonName{flex:1}
+.miniMon.hit{background:var(--no-soft);color:var(--no)}
+.miniMon.hit .miniMonIcon{animation:monShake .4s}
+.miniMon.defeated{background:var(--ok-soft);color:var(--ok)}
+.miniMon.defeated .miniMonIcon{animation:monPop .45s}
+@keyframes monShake{
+  0%,100%{transform:translateX(0) rotate(0)}
+  20%{transform:translateX(-4px) rotate(-10deg)}
+  40%{transform:translateX(4px) rotate(10deg)}
+  60%{transform:translateX(-3px) rotate(-6deg)}
+  80%{transform:translateX(3px) rotate(6deg)}
+}
+@keyframes monPop{
+  0%{transform:scale(1) rotate(0)}
+  40%{transform:scale(1.35) rotate(-12deg)}
+  70%{transform:scale(.82) rotate(8deg)}
+  100%{transform:scale(1) rotate(0)}
+}
+@media (prefers-reduced-motion:reduce){
+  .miniMonIcon{animation:none!important}
+}
+
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:13px}
+.meta span{font-size:12.5px;color:var(--tx-2);background:var(--line-2);padding:4px 9px;border-radius:7px}
+.meta .law{background:var(--warn-soft);color:var(--warn);font-weight:600}
+.meta .ai{background:var(--brand-soft);color:var(--brand)}
+
+.stem{font-size:19px;line-height:1.85;margin:0 0 8px;letter-spacing:.01em}
+
+.tip{font-size:12.5px;color:var(--tx-3);margin:0 0 14px;line-height:1.55}
+
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{
+  display:flex;align-items:stretch;
+  border:1.5px solid var(--line);border-radius:12px;overflow:hidden;
+  background:var(--card);transition:border-color .12s,background .12s;
+}
+.opt .pick{
+  flex:1;display:flex;align-items:flex-start;gap:11px;
+  padding:14px 12px;font-size:16.5px;line-height:1.65;
+}
+.opt .k{
+  flex:none;width:25px;height:25px;line-height:23px;text-align:center;
+  border:1.5px solid var(--line);border-radius:50%;
+  font-family:var(--num);font-size:13px;color:var(--tx-2);margin-top:1px;
+}
+.opt .del{
+  flex:none;width:46px;border-left:1px solid var(--line-2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--tx-3);
+}
+.opt[data-cut="1"]{background:var(--bg)}
+.opt[data-cut="1"] .pick{opacity:.4;text-decoration:line-through;text-decoration-color:var(--no);text-decoration-thickness:1.5px}
+.opt[data-cut="1"] .del{color:var(--no);background:var(--no-soft)}
+.opt[data-r="ok"]{border-color:var(--ok);background:var(--ok-soft)}
+.opt[data-r="ok"] .k{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt[data-r="no"]{border-color:var(--no);background:var(--no-soft)}
+.opt[data-r="no"] .k{background:var(--no);border-color:var(--no);color:#fff}
+.opt[data-r="sel"]{border-color:var(--brand);background:var(--brand-soft)}
+.opt[data-r="sel"] .k{background:var(--brand);border-color:var(--brand);color:#fff}
+.opt[data-r] .del{display:none}
+
+.unsure{
+  display:flex;align-items:center;gap:10px;width:100%;
+  margin-top:12px;padding:13px 14px;border-radius:12px;
+  border:1.5px dashed var(--line);font-size:15px;color:var(--tx-2);
+}
+.unsure .bx{width:19px;height:19px;flex:none;border:1.5px solid var(--line);border-radius:5px;font-size:13px;line-height:17px;text-align:center;color:transparent}
+.unsure[aria-pressed="true"]{border-style:solid;border-color:var(--warn);background:var(--warn-soft);color:var(--warn)}
+.unsure[aria-pressed="true"] .bx{background:var(--warn);border-color:var(--warn);color:#fff}
+
+/* ---- 批改結果 ---- */
+.verdict{
+  display:flex;align-items:center;gap:10px;
+  margin:16px -16px 0;padding:14px 16px;
+  font-size:17px;font-weight:600;
+}
+.verdict.ok{background:var(--ok-soft);color:var(--ok)}
+.verdict.no{background:var(--no-soft);color:var(--no)}
+.verdict .t{font-size:24px;line-height:1}
+.verdict .sp{margin-left:auto;font-family:var(--num);font-size:13px;font-weight:500;opacity:.8}
+
+.sol{padding:16px 0 0;margin:0 -16px;border-top:1px solid var(--line-2)}
+.sol > *{padding-left:16px;padding-right:16px}
+.sol h4{font-size:13px;color:var(--tx-2);margin:0 0 8px;font-weight:600}
+.sol p{margin:0 0 14px;font-size:16px;line-height:1.8}
+.why{display:flex;gap:10px;font-size:14.5px;line-height:1.7;color:var(--tx-2);padding:9px 16px;border-top:1px solid var(--line-2)}
+.why b{font-family:var(--num);flex:none;color:var(--tx);width:14px}
+
+.dual{margin:14px 16px 0;border:1.5px solid var(--warn);border-radius:12px;overflow:hidden}
+.dual h5{margin:0;padding:10px 13px;background:var(--warn-soft);color:var(--warn);font-size:13.5px;font-weight:700}
+.dual .pr{display:flex}
+.dual .pr > div{flex:1;padding:12px 13px;text-align:center}
+.dual .pr > div + div{border-left:1px solid var(--line)}
+.dual .lb{display:block;font-size:11.5px;color:var(--tx-2);margin-bottom:4px}
+.dual .an{font-size:22px;font-weight:700;font-family:var(--num)}
+.dual .nt{padding:12px 13px;border-top:1px solid var(--line-2);font-size:14px;line-height:1.7;color:var(--tx-2)}
+
+.sched{
+  margin:16px 16px 0;padding:11px 13px;background:var(--line-2);border-radius:10px;
+  font-size:13px;color:var(--tx-2);line-height:1.6;
+}
+.sched b{color:var(--ok)}
+
+/* ---- 統計 ---- */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px}
+.kpi .v{font-family:var(--num);font-size:29px;font-weight:600;color:var(--brand);line-height:1.1}
+.kpi .v small{font-size:14px;opacity:.6}
+.kpi .l{font-size:13px;color:var(--tx-2);margin-top:6px}
+
+.bar{padding:13px 15px}
+.bar + .bar{border-top:1px solid var(--line-2)}
+.bar .t{display:flex;justify-content:space-between;gap:10px;font-size:15px;margin-bottom:7px}
+.bar .t .r{font-family:var(--num);font-size:13px;color:var(--tx-2)}
+.bar .rail{height:7px;background:var(--line-2);border-radius:4px;overflow:hidden}
+.bar .rail i{display:block;height:100%;background:var(--brand);border-radius:4px;transition:width .5s}
+.bar.w .rail i{background:var(--no)}
+.bar.s .rail i{background:var(--ok)}
+
+.it{display:flex;gap:12px;padding:13px 15px;align-items:flex-start}
+.it + .it{border-top:1px solid var(--line-2)}
+.it .n{font-family:var(--num);font-size:12px;color:var(--no);flex:none;margin-top:3px;font-weight:600}
+.it .tx{flex:1;font-size:15px;line-height:1.6}
+.it .m{display:block;font-size:12.5px;color:var(--tx-2);margin-top:5px;line-height:1.5}
+
+.lad{display:flex;gap:5px;padding:15px}
+.lad div{flex:1;text-align:center}
+.lad .b{height:40px;line-height:38px;border:1px solid var(--line);border-radius:9px;font-family:var(--num);font-size:15px;color:var(--tx-2)}
+.lad .l{font-size:10.5px;color:var(--tx-3);margin-top:5px}
+.lad .due .b{border-color:var(--no);color:var(--no);background:var(--no-soft);font-weight:600}
+.lad .fin .b{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+
+/* ---- 結算 ---- */
+.score{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:32px 20px 26px;text-align:center}
+.score .big{font-family:var(--num);font-size:58px;font-weight:600;color:var(--brand);line-height:1}
+.score .big small{font-size:22px;opacity:.55}
+.score .c{font-size:16px;margin-top:10px}
+.score .m{font-size:13px;color:var(--tx-2);margin-top:6px}
+
+/* ---- 冒險／RPG系統 ---- */
+.charCard{
+  display:flex;align-items:center;gap:14px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;
+}
+.avatar{
+  flex:none;width:56px;height:56px;border-radius:14px;
+  background:var(--brand-soft);display:flex;align-items:center;justify-content:center;
+  font-size:30px;border:2px solid var(--brand);cursor:pointer;
+  image-rendering:pixelated;
+}
+.charInfo{flex:1;min-width:0}
+.lvRow{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:16px}
+.lvRow .gold{font-family:var(--num);font-weight:600;font-size:14px;color:var(--warn)}
+.titleTag{font-size:11.5px;color:var(--brand);font-weight:600;margin-top:2px}
+.xpBar{height:8px;background:var(--line-2);border-radius:4px;overflow:hidden;margin-top:8px}
+.xpBar i{display:block;height:100%;background:var(--brand);border-radius:4px;transition:width .4s}
+.xpLab{font-family:var(--num);font-size:11px;color:var(--tx-2);margin-top:4px}
+.statRow{display:flex;gap:14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
+
+.avatarGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:13px}
+.avatarOpt{
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;
+  border:1.5px solid var(--line);border-radius:10px;background:var(--card);
+}
+.avatarOpt.sel{border-color:var(--brand);background:var(--brand-soft)}
+.avatarOpt.locked{opacity:.5}
+.avOptIcon{font-size:21px;image-rendering:pixelated}
+.avOptName{font-size:10px;color:var(--tx-2)}
+
+.badgeRow{display:flex;align-items:center;gap:12px;padding:11px 13px}
+.badgeRow + .badgeRow{border-top:1px solid var(--line-2)}
+.badgeRow.locked{opacity:.5}
+.badgeIcon{
+  flex:none;width:34px;height:34px;border-radius:9px;background:var(--warn-soft);
+  display:flex;align-items:center;justify-content:center;font-size:18px;image-rendering:pixelated;
+}
+.badgeRow.locked .badgeIcon{background:var(--line-2)}
+.badgeInfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.badgeName{font-size:14px;font-weight:600}
+.badgeDesc{font-size:12px;color:var(--tx-2)}
+.badgeGot{color:var(--ok);font-size:16px;font-weight:700;flex:none}
+
+.badgeToast{
+  position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top) + 10px);
+  z-index:999;background:var(--card);border:1.5px solid var(--warn);border-radius:14px;
+  padding:12px 14px;display:flex;align-items:center;gap:11px;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+  transform:translateY(-130%);opacity:0;transition:transform .35s ease,opacity .35s ease;
+}
+.badgeToast.show{transform:translateY(0);opacity:1}
+.btIcon{font-size:27px;flex:none}
+.btText{font-size:13.5px;line-height:1.4;color:var(--tx)}
+.btText b{display:block;font-size:11px;color:var(--warn);letter-spacing:.05em}
+
+.itRow{
+  display:flex;align-items:center;gap:11px;padding:11px 13px;
+  border-left:4px solid var(--line);
+}
+.itRow + .itRow{border-top:1px solid var(--line-2)}
+.itRow .btn{
+  display:inline-block;width:auto;flex:none;margin-top:0;
+  padding:9px 13px;font-size:13px;border-radius:8px;white-space:nowrap;
+}
+.itIcon{
+  flex:none;width:34px;height:34px;border-radius:8px;background:var(--line-2);
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+  image-rendering:pixelated;
+}
+.itRow2{padding:11px 13px;border-left:4px solid var(--line)}
+.itRow2 + .itRow2{border-top:1px solid var(--line-2)}
+.itTop{display:flex;align-items:center;gap:11px}
+.itSub{display:flex;gap:8px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.itRow2 .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 13px;font-size:13px;border-radius:8px;white-space:nowrap}
+.btn.warn{background:var(--no-soft);color:var(--no);border-color:transparent}
+.itInfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.itName{font-size:14.5px;font-weight:600}
+.ench{font-family:var(--num);font-size:11.5px;color:var(--warn);font-weight:700}
+.itStat{font-size:12px;color:var(--tx-2)}
+.itActions{display:flex;gap:8px;flex:none;margin-left:auto}
+.owned{font-size:12px;color:var(--tx-3);flex:none}
+.rarity-common{border-left-color:#9AA0A6}
+.rarity-rare{border-left-color:#4C8DFF}
+.rarity-epic{border-left-color:#B356E0}
+.rarity-legendary{border-left-color:#E0A82E}
+.rarity-common .itIcon{background:rgba(154,160,166,.16)}
+.rarity-rare .itIcon{background:rgba(76,141,255,.16)}
+.rarity-epic .itIcon{background:rgba(179,86,224,.16)}
+.rarity-legendary .itIcon{background:rgba(224,168,46,.18)}
+
+.chCard{
+  display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;
+}
+.chCard + .chCard{margin-top:10px}
+.chIcon{
+  flex:none;width:42px;height:42px;border-radius:10px;background:var(--line-2);
+  display:flex;align-items:center;justify-content:center;font-size:22px;image-rendering:pixelated;
+}
+.chInfo{flex:1;min-width:0}
+.chName{font-size:15px;font-weight:700}
+.chCard .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 14px;font-size:13px;border-radius:8px;white-space:nowrap}
+
+.attrRow{display:flex;align-items:center;gap:11px;padding:10px 13px}
+.attrRow + .attrRow{border-top:1px solid var(--line-2)}
+.attrIcon{
+  flex:none;width:30px;height:30px;border-radius:8px;background:var(--line-2);
+  display:flex;align-items:center;justify-content:center;font-size:15px;image-rendering:pixelated;
+}
+.attrInfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.attrName{font-size:13.5px;font-weight:600}
+.attrStars{font-size:12px;color:var(--warn);letter-spacing:1px}
+.attrBonus{font-family:var(--num);font-size:12px;color:var(--tx-2);flex:none;white-space:nowrap}
+
+.battleTop{display:flex;align-items:center;gap:12px;padding:14px 0 12px}
+.battleTop .x{font-size:22px;color:var(--tx-2);line-height:1;width:26px;flex:none}
+.battleTop .mid{flex:1;font-size:13.5px;color:var(--tx-2)}
+.battleTop .clk{font-family:var(--num);font-size:14px;color:var(--tx-2)}
+
+.hpCard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.hpRow{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.hpRow.me{margin-top:12px}
+.hpIcon{font-size:20px;image-rendering:pixelated}
+.hpName{flex:1}
+.hpNum{font-family:var(--num);font-size:12.5px;color:var(--tx-2);font-weight:500}
+.hpBar{height:10px;background:var(--line-2);border-radius:5px;overflow:hidden;margin-top:6px}
+.hpBar i{display:block;height:100%;background:var(--no);border-radius:5px;transition:width .5s}
+.hpBar.me i{background:var(--ok)}
+
+.fx{margin:4px 0 0;padding:9px 12px;border-radius:8px;font-size:13.5px;font-weight:600}
+.fx.ok{background:var(--ok-soft);color:var(--ok)}
+.fx.no{background:var(--no-soft);color:var(--no)}
+.rw{font-family:var(--num);font-weight:600;color:var(--warn)}
+
+.lootBox{
+  margin-top:14px;padding:12px;border-radius:10px;border:2px dashed var(--line);
+  display:flex;align-items:center;gap:10px;justify-content:center;font-size:14px;font-weight:600;
+}
+
+/* ---- 題庫 ---- */
+textarea{
+  width:100%;min-height:160px;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;color:var(--tx);padding:12px;
+  font-family:var(--num);font-size:13px;line-height:1.7;resize:vertical;
+}
+pre.code{
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;
+  padding:13px;font-family:var(--num);font-size:11.5px;line-height:1.75;
+  color:var(--tx-2);overflow-x:auto;margin:0;
+}
+.msg{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14.5px;line-height:1.6}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg.err{background:var(--no-soft);color:var(--no)}
+
+#crash{
+  display:none;position:fixed;left:10px;right:10px;top:10px;z-index:999;
+  background:var(--no);color:#fff;padding:13px 15px;border-radius:12px;
+  font-size:13.5px;line-height:1.6;font-family:var(--num);
+  box-shadow:0 6px 20px rgba(0,0,0,.3);
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="crash"></div>
+<div id="app">
+  <header class="top">
+    <h1>外特刷題</h1>
+    <span class="side">
+      <span class="r" id="topRight"></span>
+      <button class="themeBtn" id="themeBtn" aria-label="切換淺色／深色模式">
+        <span class="ic" id="themeIc">🌓</span><span id="themeLb">自動</span>
+      </button>
+    </span>
+  </header>
+
+  <section class="screen on" id="s-drill"></section>
+  <section class="screen" id="s-review"></section>
+  <section class="screen" id="s-stats"></section>
+  <section class="screen" id="s-bank"></section>
+  <section class="screen" id="s-adventure"></section>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="drill"  aria-pressed="true"><span class="ic">✏️</span>練習</button>
+    <button data-tab="review" aria-pressed="false"><span class="ic">🔁</span>複習<span id="dueBadge"></span></button>
+    <button data-tab="stats"  aria-pressed="false"><span class="ic">📊</span>統計</button>
+    <button data-tab="bank"   aria-pressed="false"><span class="ic">📚</span>題庫</button>
+    <button data-tab="adventure" aria-pressed="false"><span class="ic">🗡️</span>冒險</button>
+  </nav>
+</div>
+
+<script>
+"use strict";
+window.onerror = function(m, s, l){
+  var c = document.getElementById('crash');
+  c.style.display = 'block';
+  c.textContent = '發生錯誤（第 ' + l + ' 行）：' + m + ' — 請把這段文字回報給 Claude。';
+};
+
+/* ===================== 儲存 ===================== */
+var KEY = 'waite-quiz-v2';
+var Store = {
+  ws: (typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function'),
+  get: async function(){
+    if (this.ws){ try { var r = await window.storage.get(KEY); if (r) return JSON.parse(r.value); } catch(e){} }
+    try { var v = localStorage.getItem(KEY); if (v) return JSON.parse(v); } catch(e){}
+    return null;
+  },
+  set: async function(o){
+    var s = JSON.stringify(o);
+    if (this.ws){ try { await window.storage.set(KEY, s); } catch(e){} }
+    try { localStorage.setItem(KEY, s); } catch(e){}
+  }
+};
+
+/* ===================== 間隔重複 ===================== */
+var INTERVALS = [0,1,3,7,14,30], MAX_LV = 5, DAY = 86400000;
+var KEYS = ['A','B','C','D','E','F'];
+
+/* ===================== 考科架構（外交特考三等 領事人員） ===================== */
+var EXAMS = [
+  { name:"國文", parts:[], note:"正式考試含作文與測驗，本 App 只收錄測驗（選擇題）部分。" },
+  { name:"綜合法政知識", parts:["中華民國憲法","兩岸關係","比較政府與政治"], note:"三個子科目合併為一節考試，可分開練習。" },
+  { name:"外國文", parts:[], note:"正式考試含新聞書信撰寫與編譯，本 App 只收錄測驗（選擇題）部分。" },
+  { name:"國際公法", parts:[], note:"正式考試為申論題。此處收錄依考古題出題邏輯生成的選擇題，用於檢核觀念。" },
+  { name:"國際關係與近代外交史", parts:[], note:"正式考試含申論與測驗。此處收錄考古題選擇題，以及依申論題邏輯生成的選擇題。" },
+  { name:"國際經濟", parts:[], note:"正式考試為申論題。此處收錄依考古題出題邏輯生成的選擇題，用於檢核觀念。" }
+];
+var EXAM_NAMES = EXAMS.map(function(e){ return e.name; });
+function examDef(n){ for (var i=0;i<EXAMS.length;i++) if (EXAMS[i].name === n) return EXAMS[i]; return null; }
+
+/* 舊資料（只有 subject 欄位）自動歸位到新架構 */
+var LEGACY = {
+  "中華民國憲法":       ["綜合法政知識","中華民國憲法"],
+  "兩岸關係":           ["綜合法政知識","兩岸關係"],
+  "比較政府與政治":     ["綜合法政知識","比較政府與政治"],
+  "國際公法":           ["國際公法",""],
+  "國際關係與近代外交史":["國際關係與近代外交史",""],
+  "國文":               ["國文",""],
+  "外國文":             ["外國文",""],
+  "國際經濟":           ["國際經濟",""]
+};
+function normalize(q){
+  if (!q.exam && q.subject){
+    var m = LEGACY[q.subject];
+    if (m){ q.exam = m[0]; if (m[1] && !q.part) q.part = m[1]; }
+    else q.exam = q.subject;
+  }
+  if (!q.exam) q.exam = "未分類";
+  if (q.part == null) q.part = "";
+  delete q.subject;
+  return q;
+}
+function normalizeAll(a){ return (a || []).map(normalize); }
+
+/* 顯示用：考科／子科目／主題串接 */
+function lineage(q){
+  var a = [q.exam];
+  if (q.part) a.push(q.part);
+  if (q.topic) a.push(q.topic);
+  return a;
+}
+
+/* ===================== 範例題庫 ===================== */
+var SEED = [
+  { id:"CON-001", exam:"綜合法政知識", part:"中華民國憲法", topic:"中央政府體制",
+    stem:"依現行憲法增修條文規定，行政院院長之產生方式為何？",
+    options:["由總統提名，經立法院同意後任命","由總統直接任命，無須立法院同意","由立法院院長兼任","由總統提名，經監察院同意後任命"],
+    answer:1,
+    explanation:"憲法增修條文第3條第1項明定，行政院院長由總統任命之，無須經立法院同意。此為民國86年第四次修憲的重要變動，將原憲法第55條的立法院同意權刪除。",
+    why:["此為修憲前（憲法第55條）之規定，已遭增修條文停止適用。","正解。總統享有行政院院長之直接任命權。","憲法未有此設計，行政與立法分立。","監察院自民國81年修憲後已非民意機關，無此權限。"],
+    source:"範例題", legal:{ flagged:true, oldAnswer:0, note:"民國86年修憲前，行政院院長須經立法院同意。若遇86年以前的考古題，當年正解為「經立法院同意」。" } },
+
+  { id:"CON-002", exam:"綜合法政知識", part:"中華民國憲法", topic:"基本人權",
+    stem:"關於憲法第23條「法律保留原則」之敘述，下列何者正確？",
+    options:["人民自由權利之限制，得以行政命令為之","限制人民基本權利須以法律定之，且須符合比例原則","法律保留原則僅適用於財產權","只要立法院通過即可，無須審查目的正當性"],
+    answer:1,
+    explanation:"憲法第23條規定，人民之自由權利，除為防止妨礙他人自由、避免緊急危難、維持社會秩序或增進公共利益所必要者外，不得以法律限制之。此條同時導出法律保留原則與比例原則兩大要求。",
+    why:["原則上不得，除非有法律明確授權且授權之目的、內容、範圍具體明確（釋字第443號層級化保留）。","正解。兼含形式上的法律保留與實質上的比例原則審查。","適用於所有基本權利，非僅財產權。","尚須通過目的正當、手段必要、限制妥當之審查。"],
+    source:"範例題", legal:{ flagged:false } },
+
+  { id:"CMP-001", exam:"綜合法政知識", part:"比較政府與政治", topic:"政府體制類型",
+    stem:"下列何者為「半總統制」最核心的制度特徵？",
+    options:["總統由國會選出，並向國會負責","民選總統與對國會負責的內閣總理並存","行政權完全集中於總統一人","國會可直接罷免總統"],
+    answer:1,
+    explanation:"Duverger 對半總統制的經典定義包含三要件：總統由普選產生、總統擁有相當的實質權力、以及存在一位對國會負責的總理與內閣。關鍵在於行政權的雙元性。",
+    why:["此接近議會內閣制下的虛位元首設計。","正解。雙元行政是半總統制的定義性特徵。","此為總統制的單元行政特徵。","罷免程序的有無並非分類的核心判準。"],
+    source:"範例題", legal:{ flagged:false } },
+
+  { id:"CRS-001", exam:"綜合法政知識", part:"兩岸關係", topic:"法制與協議",
+    stem:"規範臺灣地區與大陸地區人民往來的主要法律依據為何？",
+    options:["國家安全法","臺灣地區與大陸地區人民關係條例","入出國及移民法","兩岸人民往來管理辦法"],
+    answer:1,
+    explanation:"《臺灣地區與大陸地區人民關係條例》於民國81年制定施行，是處理兩岸人民往來、投資、文書驗證、司法互助等事項的核心法律，屬特別法性質。",
+    why:["規範國安事項，非兩岸往來的一般性依據。","正解，通稱「兩岸人民關係條例」。","規範我國與外國人之入出境，大陸地區人民不適用。","此為授權訂定的行政命令，非主要法律依據。"],
+    source:"範例題", legal:{ flagged:true, oldAnswer:1, note:"本條例歷經多次修正（國安審查、公務員赴陸管制、婚姻與繼承規定等），實體要件常有變動。答題邏輯不變，但涉及具體年限、金額、審查機關的細節題，務必以現行條文為準。" } },
+
+  { id:"IL-001", exam:"國際公法", part:"", topic:"外交與領事關係",
+    stem:"依《維也納領事關係公約》，領事官員與外交官員在特權豁免上的主要差異為何？",
+    options:["領事官員享有完全的刑事管轄豁免","領事官員原則上僅就執行職務之行為享有豁免","兩者豁免範圍完全相同","領事官員完全不享有任何豁免"],
+    answer:1,
+    explanation:"1963年《維也納領事關係公約》第43條採職務豁免，領事官員僅就執行領事職務的行為不受接受國管轄；1961年《維也納外交關係公約》第31條則給予外交代表原則上完全的刑事管轄豁免。",
+    why:["此為外交代表的待遇，領事官員不及於此。","正解。領事採職務豁免，範圍明顯較窄。","兩公約設計明顯不同，這是本題常見的陷阱選項。","仍享有職務豁免及人身不可侵犯的有限保障。"],
+    source:"範例題（AI 生成，依申論題邏輯）", legal:{ flagged:false } },
+
+  { id:"IR-001", exam:"國際關係與近代外交史", part:"", topic:"國關理論",
+    stem:"新現實主義認為國家行為的主要決定因素為何？",
+    options:["國內政治體制的性質","國際體系的無政府結構與權力分布","領導人的個人信念","國際法規範的約束力"],
+    answer:1,
+    explanation:"Waltz 在《國際政治理論》中主張應從體系層次而非單位層次解釋國家行為。國際體系的無政府狀態與極的分布構成結構性壓力，迫使國家追求安全與自助。",
+    why:["屬自由主義或新古典現實主義關注的單位層次變數。","正解。這是結構現實主義的核心命題。","屬個人層次分析，Waltz 稱之為第一意象。","新現實主義認為國際法在無政府體系下約束力有限。"],
+    source:"範例題", legal:{ flagged:false } },
+
+  { id:"CHI-001", exam:"國文", part:"", topic:"成語與詞語辨析",
+    stem:"「文不加點」一語的意思為何？",
+    options:["文章沒有加上標點符號","文思敏捷，下筆成章而無須塗改","文章缺乏重點，雜亂無章","寫作時不加註解說明"],
+    answer:1,
+    explanation:"語出《後漢書‧禰衡傳》。「點」在此為塗改之意，形容才思敏捷、一氣呵成，寫完不必修改。因字面易生誤解，是測驗題的常客。",
+    why:["最常見的誤解。古文中的「點」指塗改，與標點符號無關。","正解。強調的是文思敏捷、不須修改。","語意方向相反，本語為褒義。","與「點」的字義無關。"],
+    source:"範例題", legal:{ flagged:false } },
+
+  { id:"ENG-001", exam:"外國文", part:"", topic:"詞義辨析",
+    stem:"Choose the word that best completes the sentence: The consulate will ______ the visa application within ten working days.",
+    options:["process","proceed","precede","procedure"],
+    answer:0,
+    explanation:"process 作及物動詞，意為正式受理、辦理（申請、文件），是領事事務語境的固定用法。其餘三者在此皆不合語法或語意。",
+    why:["正解。process an application 為標準搭配。","proceed 為不及物動詞，意為繼續進行，後不可直接接受詞。","precede 意為在……之前發生，語意不合。","procedure 是名詞，不能置於 will 之後作動詞。"],
+    source:"範例題", legal:{ flagged:false } },
+
+  { id:"ECO-001", exam:"國際經濟", part:"", topic:"國際貿易理論",
+    stem:"依據比較利益理論，一國應專業化生產並出口的產品為何？",
+    options:["絕對生產成本最低的產品","機會成本相對較低的產品","國內需求量最大的產品","資本密集度最高的產品"],
+    answer:1,
+    explanation:"Ricardo 的比較利益理論指出，即使一國在所有產品上皆不具絕對優勢，只要各產品的機會成本存在相對差異，仍可藉專業化生產機會成本較低者並進行貿易而互蒙其利。",
+    why:["此為 Smith 絕對利益理論的判準，非比較利益。","正解。比較利益的核心在機會成本的相對差異。","國內需求影響進口與消費結構，非決定出口專業化的方向。","要素密集度屬 Heckscher–Ohlin 要素稟賦理論的分析面向。"],
+    source:"範例題（AI 生成，依申論題邏輯）", legal:{ flagged:false } }
+];
+
+/* ===================== 狀態 ===================== */
+var BANK = [];
+var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto' };
+var DEF_RPG = {
+  level:1, xp:0, gold:20, equip:{weapon:null,armor:null,helmet:null,boots:null,accessory:null}, inv:[], enchant:{},
+  avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0
+};
+var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
+
+/* ===================== RPG：裝備目錄 ===================== */
+var ITEMS = [
+  { id:'w1', slot:'weapon', name:'木劍',       rarity:'common',    atk:2,  cost:15,  icon:'🗡️' },
+  { id:'w6', slot:'weapon', name:'石斧',       rarity:'common',    atk:3,  cost:25,  icon:'🪓' },
+  { id:'w2', slot:'weapon', name:'鐵劍',       rarity:'common',    atk:4,  cost:35,  icon:'⚔️' },
+  { id:'w7', slot:'weapon', name:'銀柄短劍',   rarity:'rare',      atk:5,  cost:55,  icon:'🔱' },
+  { id:'w3', slot:'weapon', name:'鋼刃',       rarity:'rare',      atk:7,  cost:80,  icon:'🔪' },
+  { id:'w8', slot:'weapon', name:'精鋼長槍',   rarity:'rare',      atk:9,  cost:120, icon:'🏹' },
+  { id:'w4', slot:'weapon', name:'祕銀之刃',   rarity:'epic',      atk:12, icon:'✨', dropOnly:true },
+  { id:'w5', slot:'weapon', name:'屠龍劍',     rarity:'legendary', atk:20, icon:'🌟', dropOnly:true },
+
+  { id:'a1', slot:'armor', name:'布甲',       rarity:'common',    hp:10, cost:15,  icon:'🧥' },
+  { id:'a6', slot:'armor', name:'藤甲',       rarity:'common',    hp:15, cost:25,  icon:'🌿' },
+  { id:'a2', slot:'armor', name:'皮甲',       rarity:'common',    hp:20, cost:35,  icon:'🦺' },
+  { id:'a7', slot:'armor', name:'鱗甲',       rarity:'rare',      hp:28, cost:55,  icon:'🐟' },
+  { id:'a3', slot:'armor', name:'鎖子甲',     rarity:'rare',      hp:35, cost:80,  icon:'🛡️' },
+  { id:'a8', slot:'armor', name:'板甲',       rarity:'rare',      hp:45, cost:120, icon:'🗿' },
+  { id:'a4', slot:'armor', name:'龍鱗甲',     rarity:'epic',      hp:60, icon:'🐉', dropOnly:true },
+  { id:'a5', slot:'armor', name:'聖光鎧',     rarity:'legendary', hp:100, icon:'👑', dropOnly:true },
+
+  { id:'c1', slot:'accessory', name:'幸運符',     rarity:'common', goldPct:10, cost:20,  icon:'🍀' },
+  { id:'c2', slot:'accessory', name:'智慧護符',   rarity:'common', xpPct:10,   cost:20,  icon:'📿' },
+  { id:'c6', slot:'accessory', name:'銅製懷錶',   rarity:'common', goldPct:15, cost:32,  icon:'⏱️' },
+  { id:'c7', slot:'accessory', name:'墨水瓶吊飾', rarity:'common', xpPct:15,   cost:32,  icon:'🖋️' },
+  { id:'c3', slot:'accessory', name:'學者之戒',   rarity:'rare',   xpPct:20,   cost:60,  icon:'💍' },
+  { id:'c8', slot:'accessory', name:'商人徽章',   rarity:'rare',   goldPct:22, cost:65,  icon:'🎖️' },
+  { id:'c4', slot:'accessory', name:'龍息項鍊',   rarity:'epic',  goldPct:25, xpPct:15, icon:'🔥', dropOnly:true },
+  { id:'c5', slot:'accessory', name:'不朽之冠', rarity:'legendary', goldPct:40, xpPct:30, icon:'💎', dropOnly:true },
+
+  { id:'h1', slot:'helmet', name:'布帽',     rarity:'common',    lootPct:5,  cost:18,  icon:'🧢' },
+  { id:'h6', slot:'helmet', name:'寬邊帽',   rarity:'common',    lootPct:8,  cost:28,  icon:'👒' },
+  { id:'h2', slot:'helmet', name:'皮盔',     rarity:'common',    lootPct:10, cost:38,  icon:'⛑️' },
+  { id:'h7', slot:'helmet', name:'學士帽',   rarity:'rare',      lootPct:14, cost:58,  icon:'🎓' },
+  { id:'h3', slot:'helmet', name:'鐵盔',     rarity:'rare',      lootPct:18, cost:85,  icon:'🪖' },
+  { id:'h8', slot:'helmet', name:'護目鏡盔', rarity:'rare',      lootPct:24, cost:125, icon:'🥽' },
+  { id:'h4', slot:'helmet', name:'秘境禮帽', rarity:'epic',      lootPct:32, icon:'🎩', dropOnly:true },
+  { id:'h5', slot:'helmet', name:'王者冠冕', rarity:'legendary', lootPct:50, icon:'👑', dropOnly:true },
+
+  { id:'b1', slot:'boots', name:'布鞋',     rarity:'common',    dmgReduction:5,  cost:18,  icon:'👟' },
+  { id:'b6', slot:'boots', name:'涼鞋',     rarity:'common',    dmgReduction:8,  cost:28,  icon:'🥿' },
+  { id:'b2', slot:'boots', name:'皮靴',     rarity:'common',    dmgReduction:10, cost:38,  icon:'👢' },
+  { id:'b7', slot:'boots', name:'輕舞鞋',   rarity:'rare',      dmgReduction:14, cost:58,  icon:'🩰' },
+  { id:'b3', slot:'boots', name:'登山靴',   rarity:'rare',      dmgReduction:18, cost:85,  icon:'🥾' },
+  { id:'b8', slot:'boots', name:'防滑拖',   rarity:'rare',      dmgReduction:24, cost:125, icon:'🩴' },
+  { id:'b4', slot:'boots', name:'疾風輪靴', rarity:'epic',      dmgReduction:32, icon:'🛼', dropOnly:true },
+  { id:'b5', slot:'boots', name:'旋風之靴', rarity:'legendary', dmgReduction:45, icon:'🌪️', dropOnly:true },
+];
+var MONSTER_ICONS = ['👹','👺','🧟','🐲','🦂','🕷️','👻','🐺','🦖','🧌'];
+var MINI_MONSTER_NAMES = ['迷惑史萊姆','搗蛋哥布林','嘮叨烏鴉','健忘幽靈','小石魔','調皮蝙蝠',
+  '假仙狐狸','糊塗蜘蛛','貪睡貓頭鷹','固執山羊','躲貓貓兔子','愛哭寶寶龍'];
+function miniMonsterFor(){
+  return {
+    icon: MONSTER_ICONS[Math.floor(Math.random()*MONSTER_ICONS.length)],
+    name: MINI_MONSTER_NAMES[Math.floor(Math.random()*MINI_MONSTER_NAMES.length)]
+  };
+}
+var ENCHANT_MAX = 5;
+
+/* ===================== RPG：造型與稱號 ===================== */
+var AVATARS = [
+  { icon:'🧙', name:'學者',     unlockLv:1 },
+  { icon:'🥷', name:'密探',     unlockLv:1 },
+  { icon:'🛡️', name:'騎士',     unlockLv:1 },
+  { icon:'🦊', name:'狐狸',     unlockLv:5 },
+  { icon:'🦉', name:'貓頭鷹',   unlockLv:5 },
+  { icon:'🐲', name:'幼龍',     unlockLv:10 },
+  { icon:'🦅', name:'鷹隼',     unlockLv:10 },
+  { icon:'🦄', name:'獨角獸',   unlockLv:15 },
+  { icon:'🌟', name:'星辰使者', unlockLv:20 },
+];
+var TITLES = [
+  { lv:1,  name:'見習生' },
+  { lv:5,  name:'勤學者' },
+  { lv:10, name:'領事候補' },
+  { lv:15, name:'外交新秀' },
+  { lv:20, name:'資深隨員' },
+  { lv:30, name:'領事官' },
+  { lv:40, name:'外交官' },
+  { lv:50, name:'特命全權大使' },
+];
+function currentTitle(lv){
+  var t = TITLES[0];
+  TITLES.forEach(function(x){ if (lv >= x.lv) t = x; });
+  return t.name;
+}
+
+/* ===================== RPG：成就徽章 ===================== */
+var ACHIEVEMENTS = [
+  { id:'c10',      name:'初出茅廬', desc:'累計答對 10 題',            icon:'🥉', reward:{gold:10},  check:function(c){ return c.totalCorrect >= 10; } },
+  { id:'c100',     name:'小有所成', desc:'累計答對 100 題',           icon:'🥈', reward:{gold:40},  check:function(c){ return c.totalCorrect >= 100; } },
+  { id:'c500',     name:'學識淵博', desc:'累計答對 500 題',           icon:'🥇', reward:{gold:120}, check:function(c){ return c.totalCorrect >= 500; } },
+  { id:'c1000',    name:'千錘百鍊', desc:'累計答對 1000 題',          icon:'🏆', reward:{gold:250}, check:function(c){ return c.totalCorrect >= 1000; } },
+  { id:'streak3',  name:'三日不輟', desc:'連續練習 3 天',             icon:'🔥', reward:{gold:15},  check:function(c){ return c.streakDays >= 3; } },
+  { id:'streak7',  name:'七日精進', desc:'連續練習 7 天',             icon:'📅', reward:{gold:50},  check:function(c){ return c.streakDays >= 7; } },
+  { id:'streak30', name:'鐵杵磨針', desc:'連續練習 30 天',            icon:'🗓️', reward:{gold:200}, check:function(c){ return c.streakDays >= 30; } },
+  { id:'combo10',  name:'連戰皆捷', desc:'單場連續答對 10 題',        icon:'⚡', reward:{gold:20},  check:function(c){ return c.bestCombo >= 10; } },
+  { id:'combo20',  name:'勢如破竹', desc:'單場連續答對 20 題',        icon:'🌩️', reward:{gold:60},  check:function(c){ return c.bestCombo >= 20; } },
+  { id:'wins5',    name:'屠怪新手', desc:'累計打贏 5 隻怪物',         icon:'⚔️', reward:{gold:25},  check:function(c){ return c.wins >= 5; } },
+  { id:'wins20',   name:'討伐英雄', desc:'累計打贏 20 隻怪物',        icon:'🗡️', reward:{gold:80},  check:function(c){ return c.wins >= 20; } },
+  { id:'allStar',  name:'全科啟蒙', desc:'六大考科皆達到至少 1 星屬性', icon:'🌟', reward:{gold:60},  check:function(c){ return c.allStar; } },
+  { id:'fiveStar', name:'學貫一科', desc:'任一考科屬性達到滿 5 星',   icon:'💫', reward:{gold:100}, check:function(c){ return c.maxStar >= 5; } },
+  { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備強化到 +5 滿級',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
+  { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
+  { id:'gold500',  name:'白手起家', desc:'累計賺取 500 金幣',         icon:'💰', reward:{gold:0},   check:function(c){ return c.lifetimeGold >= 500; } },
+];
+function computeTotalCorrect(){
+  var sum = 0;
+  Object.keys(D.progress).forEach(function(id){ sum += D.progress[id].right || 0; });
+  return sum;
+}
+function achievementContext(){
+  var stars = Object.keys(SUBJECT_ATTR).map(function(n){ return subjectMastery(n).stars; });
+  var enchLv = Object.keys(D.rpg.enchant || {}).map(function(k){ return D.rpg.enchant[k]; });
+  return {
+    totalCorrect: computeTotalCorrect(),
+    streakDays: streak(),
+    bestCombo: D.rpg.bestCombo || 0,
+    wins: D.rpg.wins || 0,
+    lifetimeGold: D.rpg.lifetimeGold || 0,
+    maxStar: stars.length ? Math.max.apply(null, stars) : 0,
+    allStar: Object.keys(SUBJECT_ATTR).every(function(n){ return subjectMastery(n).stars >= 1; }),
+    maxEnchant: enchLv.length ? Math.max.apply(null, enchLv) : 0,
+    hasLegendary: D.rpg.inv.some(function(id){ var it = itemById(id); return it && it.rarity === 'legendary'; }),
+  };
+}
+function checkAchievements(){
+  if (!Array.isArray(D.rpg.badges)) D.rpg.badges = [];
+  var ctx = achievementContext(), changed = false;
+  ACHIEVEMENTS.forEach(function(a){
+    if (D.rpg.badges.indexOf(a.id) >= 0) return;
+    if (!a.check(ctx)) return;
+    D.rpg.badges.push(a.id);
+    if (a.reward && a.reward.gold){ D.rpg.gold += a.reward.gold; D.rpg.lifetimeGold = (D.rpg.lifetimeGold||0) + a.reward.gold; }
+    changed = true;
+    showBadgeToast(a);
+  });
+  if (changed) save();
+}
+var TOAST_QUEUE = [];
+var TOAST_SHOWING = false;
+function showBadgeToast(a){
+  TOAST_QUEUE.push(a);
+  if (!TOAST_SHOWING) processToastQueue();
+}
+function processToastQueue(){
+  if (!TOAST_QUEUE.length){ TOAST_SHOWING = false; return; }
+  TOAST_SHOWING = true;
+  var a = TOAST_QUEUE.shift();
+  var el = document.createElement('div');
+  el.className = 'badgeToast';
+  el.innerHTML = '<span class="btIcon">' + a.icon + '</span>' +
+    '<span class="btText"><b>解鎖成就！</b>' + esc(a.name) +
+    (a.reward && a.reward.gold ? '　+' + a.reward.gold + '💰' : '') + '</span>';
+  document.body.appendChild(el);
+  requestAnimationFrame(function(){ el.classList.add('show'); });
+  setTimeout(function(){
+    el.classList.remove('show');
+    setTimeout(function(){ el.remove(); processToastQueue(); }, 400);
+  }, 2200);
+}
+
+/* 分科屬性：讀得越熟該科，對應屬性星級越高，提供小額永久加成 */
+var SUBJECT_ATTR = {
+  '國文':                 { attr:'學識', effect:'xpPct',   per:2, icon:'📖' },
+  '綜合法政知識':          { attr:'意志', effect:'hp',      per:4, icon:'🛡️' },
+  '外國文':                { attr:'敏捷', effect:'atk',     per:1, icon:'🌀' },
+  '國際公法':              { attr:'謀略', effect:'goldPct', per:2, icon:'🧭' },
+  '國際關係與近代外交史':   { attr:'統帥', effect:'atk',     per:1, icon:'🎖️' },
+  '國際經濟':              { attr:'理財', effect:'goldPct', per:2, icon:'💹' },
+};
+function subjectMastery(examName){
+  var pool = BANK.filter(function(q){ return q.exam === examName; });
+  if (!pool.length) return { stars:0, total:0, mature:0 };
+  var mature = pool.filter(function(q){ return matureQ(q.id); }).length;
+  var stars = Math.min(5, Math.round(mature/pool.length*5));
+  return { stars:stars, total:pool.length, mature:mature };
+}
+function subjectBonusTotal(effectKey){
+  var sum = 0;
+  Object.keys(SUBJECT_ATTR).forEach(function(name){
+    var cfg = SUBJECT_ATTR[name];
+    if (cfg.effect !== effectKey) return;
+    sum += subjectMastery(name).stars * cfg.per;
+  });
+  return sum;
+}
+
+function xpForLevel(lv){ return 50 + lv*30; }
+function addXp(amount){
+  D.rpg.xp += amount;
+  var leveled = false;
+  while (D.rpg.xp >= xpForLevel(D.rpg.level)){
+    D.rpg.xp -= xpForLevel(D.rpg.level);
+    D.rpg.level++;
+    leveled = true;
+  }
+  return leveled;
+}
+function itemById(id){ return ITEMS.filter(function(i){ return i.id === id; })[0]; }
+function enchantLevel(id){ return (D.rpg.enchant && D.rpg.enchant[id]) || 0; }
+function enchantCost(it, id){
+  var lv = enchantLevel(id);
+  var rarityMult = { common:1, rare:1.6, epic:2.4, legendary:3.5 }[it.rarity] || 1;
+  return Math.round((25 + lv*20) * rarityMult);
+}
+function itemStatValue(it, id, key){
+  var base = it[key];
+  if (!base) return 0;
+  var lv = enchantLevel(id);
+  return Math.round(base * (1 + lv*0.15));
+}
+function rpgAtk(){
+  var base = 8 + D.rpg.level*2, wid = D.rpg.equip.weapon, w = itemById(wid);
+  var eq = w ? itemStatValue(w, wid, 'atk') : 0;
+  return base + eq + subjectBonusTotal('atk');
+}
+function rpgMaxHp(){
+  var base = 40 + D.rpg.level*8, aid = D.rpg.equip.armor, a = itemById(aid);
+  var eq = a ? itemStatValue(a, aid, 'hp') : 0;
+  return base + eq + subjectBonusTotal('hp');
+}
+function rpgGoldMult(){
+  var cid = D.rpg.equip.accessory, c = itemById(cid);
+  var eq = c ? itemStatValue(c, cid, 'goldPct') : 0;
+  return 1 + (eq + subjectBonusTotal('goldPct'))/100;
+}
+function rpgXpMult(){
+  var cid = D.rpg.equip.accessory, c = itemById(cid);
+  var eq = c ? itemStatValue(c, cid, 'xpPct') : 0;
+  return 1 + (eq + subjectBonusTotal('xpPct'))/100;
+}
+function rpgLootBonus(){
+  var hid = D.rpg.equip.helmet, h = itemById(hid);
+  return h ? itemStatValue(h, hid, 'lootPct') : 0;
+}
+function rpgDmgReduction(){
+  var bid = D.rpg.equip.boots, b = itemById(bid);
+  var v = b ? itemStatValue(b, bid, 'dmgReduction') : 0;
+  return Math.min(80, v);
+}
+function rpgAward(ok, unsure){
+  var g, x;
+  if (ok && !unsure){ g = Math.round((5 + D.rpg.level) * rpgGoldMult()); x = Math.round(8 * rpgXpMult()); }
+  else if (ok && unsure){ g = Math.round((5 + D.rpg.level) / 2 * rpgGoldMult()); x = Math.round(4 * rpgXpMult()); }
+  else { g = 0; x = 1; }
+  D.rpg.gold += g;
+  D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + g;
+  var leveled = addXp(x);
+  return { gold:g, xp:x, leveled:leveled };
+}
+var SELL_VALUE = { common:8, rare:30, epic:70, legendary:150 };
+function sellValue(it){ return SELL_VALUE[it.rarity] || 5; }
+
+function statText(it){
+  var parts = [];
+  if (it.atk) parts.push('+' + it.atk + ' 攻擊');
+  if (it.hp) parts.push('+' + it.hp + ' 生命');
+  if (it.goldPct) parts.push('+' + it.goldPct + '% 金幣');
+  if (it.xpPct) parts.push('+' + it.xpPct + '% 經驗');
+  if (it.lootPct) parts.push('+' + it.lootPct + '% 掉寶率');
+  if (it.dmgReduction) parts.push('-' + it.dmgReduction + '% 受傷');
+  return parts.join('・');
+}
+function statTextForInstance(it, id){
+  var parts = [];
+  if (it.atk) parts.push('+' + itemStatValue(it, id, 'atk') + ' 攻擊');
+  if (it.hp) parts.push('+' + itemStatValue(it, id, 'hp') + ' 生命');
+  if (it.goldPct) parts.push('+' + itemStatValue(it, id, 'goldPct') + '% 金幣');
+  if (it.xpPct) parts.push('+' + itemStatValue(it, id, 'xpPct') + '% 經驗');
+  if (it.lootPct) parts.push('+' + itemStatValue(it, id, 'lootPct') + '% 掉寶率');
+  if (it.dmgReduction) parts.push('-' + itemStatValue(it, id, 'dmgReduction') + '% 受傷');
+  return parts.join('・');
+}
+function rollPracticeLoot(){
+  var bonus = rpgLootBonus() / 100;
+  var dropChance = Math.min(0.30, 0.08 + bonus * 0.15);
+  if (Math.random() > dropChance) return null;
+  var r = Math.random(), pool;
+  if (r < 0.80) pool = ITEMS.filter(function(i){ return i.rarity === 'common'; });
+  else if (r < 0.98) pool = ITEMS.filter(function(i){ return i.rarity === 'rare'; });
+  else pool = ITEMS.filter(function(i){ return i.rarity === 'epic'; });
+  if (!pool.length) return null;
+  var unowned = pool.filter(function(i){ return D.rpg.inv.indexOf(i.id) < 0; });
+  var pick = unowned.length ? unowned : pool;
+  return pick[Math.floor(Math.random() * pick.length)];
+}
+function rollLoot(){
+  var bonus = rpgLootBonus() / 100;
+  var noneChance = Math.max(0.15, 0.55 - bonus);
+  var r = Math.random(), pool;
+  if (r < noneChance) return null;
+  var x = (r - noneChance) / (1 - noneChance);
+  if (x < 0.25/0.45) pool = ITEMS.filter(function(i){ return i.rarity === 'common'; });
+  else if (x < (0.25+0.14)/0.45) pool = ITEMS.filter(function(i){ return i.rarity === 'rare'; });
+  else if (x < (0.25+0.14+0.05)/0.45) pool = ITEMS.filter(function(i){ return i.rarity === 'epic'; });
+  else pool = ITEMS.filter(function(i){ return i.rarity === 'legendary'; });
+  if (!pool.length) return null;
+  var unowned = pool.filter(function(i){ return D.rpg.inv.indexOf(i.id) < 0; });
+  var pick = unowned.length ? unowned : pool;
+  return pick[Math.floor(Math.random() * pick.length)];
+}
+var S = null;      // 進行中的練習
+var timer = null;
+
+/* ===================== 工具 ===================== */
+function $(s){ return document.querySelector(s); }
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){
+  return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); }
+function uniq(a){ var o = []; a.forEach(function(x){ if (o.indexOf(x) < 0) o.push(x); }); return o; }
+function today(){ return new Date().toISOString().slice(0,10); }
+function mmss(ms){ var s = Math.max(0, Math.round(ms/1000));
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0'); }
+function secs(ms){ var s = Math.round(ms/1000);
+  return s < 60 ? s + ' 秒' : Math.floor(s/60) + ' 分 ' + (s%60) + ' 秒'; }
+function save(){ Store.set(D); }
+
+function P(id){
+  if (!D.progress[id]) D.progress[id] = { lv:0, due:0, seen:0, right:0, wrong:0, unsure:0, ms:0, at:0 };
+  return D.progress[id];
+}
+function seenQ(id){ var p = D.progress[id]; return !!(p && p.seen > 0); }
+function dueQ(id){ var p = D.progress[id]; return !!(p && p.seen > 0 && p.lv < MAX_LV && Date.now() >= p.due); }
+function matureQ(id){ var p = D.progress[id]; return !!(p && p.seen > 0 && (p.lv >= MAX_LV || Date.now() < p.due)); }
+
+function countBy(fn, val){ return BANK.filter(function(q){ return fn(q) === val; }).length; }
+function partsInPlay(){
+  // 需要顯示子科目選單的考科：未選考科時視為全部
+  var sel = D.settings.subjects;
+  var act = sel.length ? sel : EXAM_NAMES;
+  var out = [];
+  act.forEach(function(n){
+    var d = examDef(n);
+    if (d && d.parts.length) d.parts.forEach(function(p){ if (out.indexOf(p) < 0) out.push(p); });
+  });
+  return out;
+}
+function pool(){
+  var st = D.settings;
+  return BANK.filter(function(q){
+    if (st.subjects.length && st.subjects.indexOf(q.exam) < 0) return false;
+    if (st.parts && st.parts.length && q.part && st.parts.indexOf(q.part) < 0) return false;
+    if (st.skipMature && matureQ(q.id)) return false;
+    return true;
+  });
+}
+
+/* ===================== 練習分頁：設定 ===================== */
+function renderDrill(){
+  if (S){ S.mode === 'single' ? renderSingle() : renderPaper(); return; }
+  var st = D.settings, p = pool();
+  if (!st.parts) st.parts = [];
+  var showParts = partsInPlay();
+  var noteFor = '';
+  if (st.subjects.length === 1){ var d = examDef(st.subjects[0]); if (d) noteFor = d.note; }
+
+  $('#s-drill').innerHTML =
+    '<h2 class="sec">作答方式</h2>' +
+    '<div class="card"><div class="pad">' +
+      '<div class="seg" id="seg">' +
+        '<button data-m="single" aria-pressed="' + (st.mode==='single') + '">單題作答</button>' +
+        '<button data-m="paper"  aria-pressed="' + (st.mode==='paper')  + '">整份考卷</button>' +
+      '</div>' +
+      '<p class="hint" style="margin:11px 0 0">' +
+        (st.mode === 'single'
+          ? '一次一題。點選項就算作答，馬上看詳解，之後自己決定要再做一題還是離開。進度隨時保存。'
+          : '一次做完指定題數，中途不顯示對錯，最後統一計分，接近正式考試。') +
+      '</p>' +
+    '</div></div>' +
+
+    '<h2 class="sec">考科（不選＝全部）</h2>' +
+    '<div class="chips" id="subs">' +
+      EXAM_NAMES.map(function(s){
+        var n = countBy(function(q){ return q.exam; }, s);
+        return '<button class="chip" data-s="' + esc(s) + '" aria-pressed="' +
+          (st.subjects.indexOf(s) >= 0) + '"' + (n ? '' : ' disabled') + '>' +
+          esc(s) + '<span class="n">' + n + '</span></button>';
+      }).join('') +
+    '</div>' +
+    (BANK.length ? '' : '<p class="hint" style="margin:9px 2px 0">題庫是空的，請先到「題庫」分頁匯入題目。</p>') +
+
+    (showParts.length
+      ? '<h2 class="sec">綜合法政知識 — 子科目</h2>' +
+        '<div class="chips" id="prts">' +
+          showParts.map(function(p){
+            var n = countBy(function(q){ return q.part; }, p);
+            return '<button class="chip" data-p="' + esc(p) + '" aria-pressed="' +
+              ((st.parts || []).indexOf(p) >= 0) + '"' + (n ? '' : ' disabled') + '>' +
+              esc(p) + '<span class="n">' + n + '</span></button>';
+          }).join('') +
+        '</div>'
+      : '') +
+
+    (noteFor ? '<p class="hint" style="margin:11px 2px 0;line-height:1.6">' + esc(noteFor) + '</p>' : '') +
+
+    '<h2 class="sec">選項</h2>' +
+    '<div class="card">' +
+      (st.mode === 'paper'
+        ? '<div class="row"><div><div class="lab">題數</div><div class="hint">符合條件共 ' + p.length + ' 題</div></div>' +
+          '<div class="step"><button id="cd">−</button><span class="v" id="cv">' +
+            Math.min(st.count, Math.max(1, p.length)) + '</span><button id="cu">＋</button></div></div>' +
+          '<div class="row"><div><div class="lab">倒數計時</div><div class="hint">每題 90 秒累計，時間到自動交卷</div></div>' +
+          '<button class="sw" id="swL" aria-pressed="' + st.limit + '" aria-label="倒數計時"></button></div>'
+        : '') +
+      '<div class="row"><div><div class="lab">跳過已熟練的題目</div><div class="hint">複習排程中尚未到期的題目不再出現，共 ' +
+        BANK.filter(function(q){ return matureQ(q.id); }).length + ' 題</div></div>' +
+        '<button class="sw" id="swM" aria-pressed="' + st.skipMature + '" aria-label="跳過已熟練"></button></div>' +
+    '</div>' +
+
+    '<button class="btn" id="go" ' + (p.length ? '' : 'disabled') + '>' +
+      (p.length === 0 ? '沒有符合條件的題目'
+        : (st.mode === 'single' ? '開始作答' : '開始考卷（' + Math.min(st.count, p.length) + ' 題）')) +
+    '</button>';
+
+  $('#topRight').textContent = '題庫 ' + BANK.length + ' 題';
+
+  Array.prototype.forEach.call(document.querySelectorAll('#seg button'), function(b){
+    b.onclick = function(){ D.settings.mode = b.dataset.m; save(); renderDrill(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#subs .chip'), function(b){
+    b.onclick = function(){
+      var a = D.settings.subjects, i = a.indexOf(b.dataset.s);
+      if (i < 0) a.push(b.dataset.s); else a.splice(i,1);
+      // 取消考科時，一併清掉不再適用的子科目
+      var ok = partsInPlay();
+      D.settings.parts = (D.settings.parts || []).filter(function(p){ return ok.indexOf(p) >= 0; });
+      save(); renderDrill();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#prts .chip'), function(b){
+    b.onclick = function(){
+      if (!D.settings.parts) D.settings.parts = [];
+      var a = D.settings.parts, i = a.indexOf(b.dataset.p);
+      if (i < 0){
+        a.push(b.dataset.p);
+        // 選了子科目就自動把「綜合法政知識」納入範圍，避免出到別科的題
+        EXAMS.forEach(function(e){
+          if (e.parts.indexOf(b.dataset.p) >= 0 && D.settings.subjects.indexOf(e.name) < 0)
+            D.settings.subjects.push(e.name);
+        });
+      } else a.splice(i,1);
+      save(); renderDrill();
+    };
+  });
+  var cu = $('#cu'), cd = $('#cd'), swL = $('#swL');
+  if (cu) cu.onclick = function(){ D.settings.count = Math.min(pool().length || 1, D.settings.count + 5); save(); renderDrill(); };
+  if (cd) cd.onclick = function(){ D.settings.count = Math.max(5, D.settings.count - 5); save(); renderDrill(); };
+  if (swL) swL.onclick = function(){ D.settings.limit = !D.settings.limit; save(); renderDrill(); };
+  $('#swM').onclick = function(){ D.settings.skipMature = !D.settings.skipMature; save(); renderDrill(); };
+  $('#go').onclick = function(){ D.settings.mode === 'single' ? startSingle(pool()) : startPaper(pool()); };
+}
+
+/* ===================== 單題作答 ===================== */
+function startSingle(list, label){
+  S = { mode:'single', label: label || '單題作答', src: list.map(function(q){ return q.id; }),
+        used: [], id:null, pick:null, cut:[], unsure:false, graded:false,
+        n:0, right:0, ms:0, qStart:0, combo:0 };
+  nextSingle();
+}
+
+function pickNext(){
+  var rest = S.src.filter(function(id){ return S.used.indexOf(id) < 0; });
+  if (!rest.length){ S.used = []; rest = S.src.slice(); }
+  if (!rest.length) return null;
+  // 優先出到期的複習題，其次沒做過的，最後其他
+  var due = rest.filter(dueQ), fresh = rest.filter(function(id){ return !seenQ(id); });
+  var bag = due.length ? due : (fresh.length ? fresh : rest);
+  return bag[Math.floor(Math.random() * bag.length)];
+}
+
+function nextSingle(){
+  var id = pickNext();
+  if (!id){ endSingle(); return; }
+  S.id = id; S.pick = null; S.cut = []; S.unsure = false; S.graded = false; S.qStart = Date.now();
+  S.mMon = miniMonsterFor(); S.lastLoot = null;
+  S.used.push(id);
+  renderSingle();
+}
+
+function renderSingle(){
+  var q = BANK.filter(function(x){ return x.id === S.id; })[0];
+  if (!q){ endSingle(); return; }
+  var lg = q.legal || {}, ok = S.graded && S.pick === q.answer;
+
+  $('#s-drill').innerHTML =
+    '<div class="qtop">' +
+      '<button class="x" id="quit" aria-label="儲存並離開">✕</button>' +
+      '<span class="mid">第 ' + S.used.length + ' 題' +
+        (S.n ? '　已答 ' + S.n + '・正確 ' + S.right : '') + '</span>' +
+      '<span class="clk" id="clk">00:00</span>' +
+    '</div>' +
+
+    '<div class="q">' +
+      '<div class="' + (S.graded ? (ok ? 'miniMon defeated' : 'miniMon hit') : 'miniMon') + '">' +
+        '<span class="miniMonIcon">' + S.mMon.icon + '</span>' +
+        '<span class="miniMonName">' +
+          (S.graded ? (ok ? '擊倒了「' + esc(S.mMon.name) + '」！' : '被「' + esc(S.mMon.name) + '」反擊了…')
+                    : '遭遇「' + esc(S.mMon.name) + '」，準備應戰！') +
+        '</span>' +
+      '</div>' +
+      (S.graded && S.lastLoot
+        ? '<div class="lootBox rarity-' + S.lastLoot.rarity + '"><span class="itIcon">' + S.lastLoot.icon + '</span>掉落「' + esc(S.lastLoot.name) + '」' + (statText(S.lastLoot) ? '　' + statText(S.lastLoot) : '') + '</div>'
+        : '') +
+      '<div class="meta">' +
+        lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
+        '<span class="' + (/生成|AI/.test(q.source || '') ? 'ai' : '') + '">' + esc(q.source || '未註明來源') + '</span>' +
+        (lg.flagged ? '<span class="law">⚠ 法規時效</span>' : '') +
+      '</div>' +
+
+      '<p class="stem">' + esc(q.stem) + '</p>' +
+      (S.graded ? '' : '<p class="tip">點選項即作答。右側 ✕ 可先刪去確定錯誤的選項，不會送出答案。</p>') +
+
+      '<div class="opts" id="opts">' + optsHTML(q, ok) + '</div>' +
+
+      (S.graded ? '' :
+        '<button class="unsure" id="uns" aria-pressed="' + S.unsure + '">' +
+          '<span class="bx">✓</span><span>我不太確定 — 答對也排進複習</span></button>') +
+
+      (S.graded ? verdictHTML(q, ok) + solHTML(q) : '') +
+    '</div>' +
+
+    (S.graded
+      ? '<button class="btn" id="nx">下一題</button>' +
+        '<button class="btn sec" id="stop">儲存進度並離開</button>'
+      : '');
+
+  bindOpts(q);
+  var u = $('#uns');
+  if (u) u.onclick = function(){ S.unsure = !S.unsure; var y = window.scrollY; renderSingle(); window.scrollTo(0, y); };
+  $('#quit').onclick = function(){ endSingle(); };
+  var nx = $('#nx'), st = $('#stop');
+  if (nx) nx.onclick = function(){ nextSingle(); };
+  if (st) st.onclick = function(){ endSingle(); };
+
+  S.graded ? stopClock() : startClock();
+  window.scrollTo(0,0);
+}
+
+function optsHTML(q, ok){
+  return q.options.map(function(o, i){
+    var r = '';
+    if (S.graded){
+      if (i === q.answer) r = 'ok';
+      else if (i === S.pick) r = 'no';
+    } else if (S.pick === i) r = 'sel';
+    return '<div class="opt" data-cut="' + (S.cut.indexOf(i) >= 0 ? 1 : 0) + '"' + (r ? ' data-r="' + r + '"' : '') + '>' +
+      '<button class="pick" data-i="' + i + '"' + (S.graded ? ' disabled' : '') + '>' +
+        '<span class="k">' + KEYS[i] + '</span><span>' + esc(o) + '</span></button>' +
+      (S.graded ? '' : '<button class="del" data-c="' + i + '" aria-label="刪去選項 ' + KEYS[i] + '">✕</button>') +
+      '</div>';
+  }).join('');
+}
+
+function bindOpts(q){
+  Array.prototype.forEach.call(document.querySelectorAll('#opts .pick'), function(b){
+    b.onclick = function(){
+      if (S.graded) return;
+      S.pick = parseInt(b.dataset.i, 10);
+      var k = S.cut.indexOf(S.pick); if (k >= 0) S.cut.splice(k,1);
+      if (S.mode === 'single') grade(q); else if (S.mode === 'battle') battleGrade(q); else { paperAnswer(q); }
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#opts .del'), function(b){
+    b.onclick = function(){
+      if (S.graded) return;
+      var i = parseInt(b.dataset.c, 10), k = S.cut.indexOf(i);
+      if (k < 0) S.cut.push(i); else S.cut.splice(k,1);
+      if (S.pick === i) S.pick = null;
+      var y = window.scrollY;
+      S.mode === 'single' ? renderSingle() : (S.mode === 'battle' ? renderBattle() : renderPaper());
+      window.scrollTo(0, y);
+    };
+  });
+}
+
+function grade(q){
+  var spent = Date.now() - S.qStart;
+  var ok = S.pick === q.answer;
+  var p = P(q.id);
+  p.seen++; p.ms += spent; p.at = Date.now();
+  if (ok) p.right++; else p.wrong++;
+  if (S.unsure) p.unsure++;
+
+  if (!ok) p.lv = Math.max(0, p.lv - 1);
+  else if (S.unsure) p.lv = Math.max(1, p.lv);
+  else p.lv = Math.min(MAX_LV, p.lv + 1);
+  p.due = Date.now() + ((!ok || S.unsure) ? 1 : INTERVALS[p.lv]) * DAY;
+
+  if (D.days.indexOf(today()) < 0) D.days.push(today());
+
+  S.graded = true; S.lastMs = spent; S.n++; if (ok) S.right++; S.ms += spent;
+  S.lastReward = rpgAward(ok, S.unsure);
+  S.lastLoot = ok ? rollPracticeLoot() : null;
+  if (S.lastLoot) D.rpg.inv.push(S.lastLoot.id);
+  if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
+  else { S.combo = 0; }
+  save(); refreshBadge(); checkAchievements(); renderSingle();
+}
+
+function verdictHTML(q, ok){
+  var rewardBit = '';
+  if (S.mode !== 'battle' && S.lastReward){
+    var r = S.lastReward;
+    rewardBit = ' <span class="rw">+' + r.gold + '💰 +' + r.xp + '⭐' + (r.leveled ? ' 🎉升級！' : '') + '</span>';
+  }
+  return '<div class="verdict ' + (ok ? 'ok' : 'no') + '">' +
+    '<span class="t">' + (ok ? '✓' : '✕') + '</span>' +
+    '<span>' + (ok ? (S.unsure ? '答對了，但你標記為不確定' : '答對了') :
+                     ('答錯了，正解是 ' + KEYS[q.answer])) + rewardBit + '</span>' +
+    '<span class="sp">' + secs(S.lastMs || 0) + '</span></div>';
+}
+
+function solHTML(q){
+  var lg = q.legal || {}, p = D.progress[q.id] || {};
+  var gap = Math.max(1, Math.round((p.due - Date.now()) / DAY));
+  var nx = p.lv >= MAX_LV ? '已達熟練，不再排入複習'
+         : '<b>' + gap + ' 天後</b>會再出現一次（熟練度 L' + p.lv + ' / ' + MAX_LV + '）';
+  return '<div class="sol">' +
+      '<h4>解析</h4><p>' + esc(q.explanation || '（尚未填寫詳解）') + '</p>' +
+      ((q.why && q.why.length) ? q.why.map(function(w, i){
+        return '<div class="why"><b>' + KEYS[i] + '</b><span>' + esc(w) + '</span></div>'; }).join('') : '') +
+      (lg.flagged
+        ? '<div class="dual"><h5>⚠ 這題可能因修法或釋憲而變動</h5>' +
+            '<div class="pr">' +
+              '<div><span class="lb">當年公布答案</span><span class="an">' + KEYS[lg.oldAnswer != null ? lg.oldAnswer : q.answer] + '</span></div>' +
+              '<div><span class="lb">現行法下答案</span><span class="an">' + KEYS[q.answer] + '</span></div>' +
+            '</div>' +
+            (lg.note ? '<div class="nt">' + esc(lg.note) + '</div>' : '') +
+          '</div>'
+        : '') +
+      '<div class="sched">' + nx + '</div>' +
+    '</div>';
+}
+
+function endSingle(){
+  stopClock();
+  var n = S.n, r = S.right, ms = S.ms;
+  S = null; save();
+  if (!n){ renderDrill(); return; }
+  $('#s-drill').innerHTML =
+    '<h2 class="sec">本次練習</h2>' +
+    '<div class="score">' +
+      '<div class="big">' + Math.round(r/n*100) + '<small>%</small></div>' +
+      '<div class="c">' + n + ' 題中答對 ' + r + ' 題</div>' +
+      '<div class="m">總計 ' + secs(ms) + '・平均每題 ' + secs(ms/n) + '</div>' +
+    '</div>' +
+    '<button class="btn" id="again">再開始一輪</button>' +
+    '<button class="btn sec" id="home">回到設定</button>';
+  $('#again').onclick = function(){ startSingle(pool()); };
+  $('#home').onclick = function(){ renderDrill(); };
+  refreshBadge();
+}
+
+/* ===================== 考卷模式 ===================== */
+function startPaper(list){
+  var qs = list.slice();
+  qs.sort(function(){ return Math.random() - .5; });
+  qs = qs.slice(0, Math.min(D.settings.count, qs.length));
+  S = { mode:'paper', label:'整份考卷', ids: qs.map(function(q){ return q.id; }), i:0,
+        ans:{}, cuts:{}, uns:{}, times:{}, pick:null, cut:[], unsure:false, graded:false,
+        limit: D.settings.limit ? 90000 * qs.length : 0, start: Date.now(), qStart: Date.now() };
+  renderPaper();
+}
+
+function renderPaper(){
+  var id = S.ids[S.i], q = BANK.filter(function(x){ return x.id === id; })[0];
+  if (!q){ finishPaper(); return; }
+  S.pick = S.ans[id] != null ? S.ans[id] : null;
+  S.cut = S.cuts[id] || [];
+  S.unsure = !!S.uns[id];
+  S.graded = false;
+
+  $('#s-drill').innerHTML =
+    '<div class="qtop">' +
+      '<button class="x" id="quit" aria-label="放棄本份考卷">✕</button>' +
+      '<span class="mid">第 ' + (S.i+1) + ' / ' + S.ids.length + ' 題</span>' +
+      '<span class="clk" id="clk">00:00</span>' +
+    '</div>' +
+    '<div class="prog"><i style="width:' + ((S.i+1)/S.ids.length*100).toFixed(1) + '%"></i></div>' +
+
+    '<div class="q">' +
+      '<div class="meta">' + lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
+        '<span>' + esc(q.source || '未註明來源') + '</span></div>' +
+      '<p class="stem">' + esc(q.stem) + '</p>' +
+      '<p class="tip">考卷模式作答後不顯示對錯，交卷才統一批改。</p>' +
+      '<div class="opts" id="opts">' + optsHTML(q, false) + '</div>' +
+      '<button class="unsure" id="uns" aria-pressed="' + S.unsure + '">' +
+        '<span class="bx">✓</span><span>我不太確定 — 答對也排進複習</span></button>' +
+    '</div>' +
+
+    '<div style="display:flex;gap:10px;margin-top:14px">' +
+      '<button class="btn sec tiny" id="prev" style="flex:1;margin-top:0"' + (S.i === 0 ? ' disabled' : '') + '>上一題</button>' +
+      '<button class="btn tiny" id="next" style="flex:1;margin-top:0">' +
+        (S.i + 1 >= S.ids.length ? '交卷' : '下一題') + '</button>' +
+    '</div>' +
+    '<button class="btn sec tiny" id="sub">直接交卷（未作答視為錯）</button>';
+
+  bindOpts(q);
+  $('#uns').onclick = function(){ S.unsure = !S.unsure; S.uns[id] = S.unsure; var y = window.scrollY; renderPaper(); window.scrollTo(0, y); };
+  $('#quit').onclick = function(){ if (confirm('放棄這份考卷？已作答的題目不會計入進度。')){ stopClock(); S = null; renderDrill(); } };
+  $('#prev').onclick = function(){ S.i = Math.max(0, S.i - 1); renderPaper(); };
+  $('#next').onclick = function(){
+    if (S.i + 1 >= S.ids.length) finishPaper();
+    else { S.i++; S.qStart = Date.now(); renderPaper(); }
+  };
+  $('#sub').onclick = function(){ if (confirm('現在交卷？')) finishPaper(); };
+  startClock();
+  window.scrollTo(0,0);
+}
+
+function paperAnswer(q){
+  S.ans[q.id] = S.pick;
+  S.cuts[q.id] = S.cut;
+  S.times[q.id] = (S.times[q.id] || 0) + (Date.now() - S.qStart);
+  S.qStart = Date.now();
+  renderPaper();
+}
+
+function finishPaper(){
+  stopClock();
+  var qs = S.ids.map(function(id){ return BANK.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean);
+  var right = 0, total = 0, wrong = [], risky = [], totalGold = 0, totalXp = 0, leveledUp = false;
+
+  qs.forEach(function(q){
+    var pick = S.ans[q.id], ok = pick === q.answer, uns = !!S.uns[q.id];
+    var t = S.times[q.id] || 0; total += t;
+    var p = P(q.id);
+    p.seen++; p.ms += t; p.at = Date.now();
+    if (ok){ p.right++; right++; } else { p.wrong++; wrong.push(q); }
+    if (uns){ p.unsure++; if (ok) risky.push(q); }
+    if (!ok) p.lv = Math.max(0, p.lv - 1);
+    else if (uns) p.lv = Math.max(1, p.lv);
+    else p.lv = Math.min(MAX_LV, p.lv + 1);
+    p.due = Date.now() + ((!ok || uns) ? 1 : INTERVALS[p.lv]) * DAY;
+    var rw = rpgAward(ok, uns);
+    totalGold += rw.gold; totalXp += rw.xp; if (rw.leveled) leveledUp = true;
+  });
+  if (D.days.indexOf(today()) < 0) D.days.push(today());
+  save(); refreshBadge(); checkAchievements();
+
+  var wrongList = wrong.slice();
+  S = null;
+
+  $('#s-drill').innerHTML =
+    '<h2 class="sec">考卷結果</h2>' +
+    '<div class="score">' +
+      '<div class="big">' + Math.round(right/Math.max(1,qs.length)*100) + '<small>%</small></div>' +
+      '<div class="c">' + qs.length + ' 題中答對 ' + right + ' 題</div>' +
+      '<div class="m">總計 ' + secs(total) + '・平均每題 ' + secs(total/Math.max(1,qs.length)) + '</div>' +
+      '<div class="m" style="margin-top:8px">獲得 +' + totalGold + '💰　+' + totalXp + '⭐' + (leveledUp ? '　🎉升級！' : '') + '</div>' +
+    '</div>' +
+    (risky.length ? '<h2 class="sec">答對但沒把握 ' + risky.length + ' 題</h2><div class="card">' +
+      risky.map(itemHTML).join('') + '</div>' : '') +
+    (wrongList.length ? '<h2 class="sec">答錯 ' + wrongList.length + ' 題</h2><div class="card">' +
+      wrongList.map(itemHTML).join('') + '</div>' : '') +
+    (wrongList.length ? '<button class="btn" id="redo">立刻檢討這 ' + wrongList.length + ' 題</button>' : '') +
+    '<button class="btn sec" id="home">回到設定</button>';
+
+  var rd = $('#redo');
+  if (rd) rd.onclick = function(){ startSingle(wrongList, '錯題檢討'); };
+  $('#home').onclick = function(){ renderDrill(); };
+  window.scrollTo(0,0);
+}
+
+function itemHTML(q){
+  var p = D.progress[q.id] || {};
+  return '<div class="it"><span class="n">' + KEYS[q.answer] + '</span><span class="tx">' + esc(q.stem) +
+    '<span class="m">' + esc(lineage(q).join('・')) +
+    '・熟練度 L' + (p.lv || 0) + ((q.legal && q.legal.flagged) ? '・法規時效題' : '') + '</span></span></div>';
+}
+
+/* ===================== 計時 ===================== */
+function startClock(){
+  stopClock();
+  timer = setInterval(function(){
+    var el = $('#clk');
+    if (!el || !S){ stopClock(); return; }
+    if (S.mode === 'paper' && S.limit){
+      var left = S.limit - (Date.now() - S.start);
+      el.textContent = mmss(left);
+      el.className = 'clk' + (left < 60000 ? ' warn' : '');
+      if (left <= 0){ stopClock(); alert('時間到，自動交卷。'); finishPaper(); }
+    } else {
+      el.textContent = mmss(Date.now() - S.qStart);
+    }
+  }, 500);
+}
+function stopClock(){ if (timer) clearInterval(timer); timer = null; }
+
+/* ===================== 複習分頁 ===================== */
+function renderReview(){
+  var seen = BANK.filter(function(q){ return seenQ(q.id); });
+  if (!seen.length){
+    $('#s-review').innerHTML = '<div class="empty"><b>複習排程還沒啟動</b>' +
+      '先到「練習」做幾題。答錯或標記不確定的題目會自動排入間隔重複，<br>依 1 → 3 → 7 → 14 → 30 天的節奏回來找你。</div>';
+    return;
+  }
+  var due = BANK.filter(function(q){ return dueQ(q.id); });
+  var wrongEver = seen.filter(function(q){ var p = D.progress[q.id]; return p.wrong > 0 || p.unsure > 0; });
+  var lv = [0,1,2,3,4,5].map(function(L){
+    return seen.filter(function(q){ return D.progress[q.id].lv === L; }).length; });
+
+  $('#s-review').innerHTML =
+    '<h2 class="sec">今日待複習</h2>' +
+    '<div class="score">' +
+      '<div class="big">' + due.length + '<small> 題</small></div>' +
+      '<div class="c">' + (due.length ? '已到期，該回來看看了' : '今天沒有到期的題目') + '</div>' +
+      '<div class="m">錯題池 ' + wrongEver.length + ' 題・已熟練 ' + lv[5] + ' 題</div>' +
+    '</div>' +
+    (due.length ? '<button class="btn" id="rev">開始複習</button>' : '') +
+    (wrongEver.length ? '<button class="btn sec" id="all">不管到期與否，複習全部錯題</button>' : '') +
+
+    '<h2 class="sec">熟練度分布</h2>' +
+    '<div class="card"><div class="lad">' +
+      lv.map(function(n, L){
+        return '<div class="' + (L === MAX_LV ? 'fin' : (L === 0 && n ? 'due' : '')) + '">' +
+          '<div class="b">' + n + '</div><div class="l">' +
+          (L === MAX_LV ? '熟練' : 'L' + L + '<br>' + (INTERVALS[L] || 0) + '天') + '</div></div>';
+      }).join('') +
+    '</div><p class="hint" style="padding:0 15px 15px;margin:0">答對升一階、答錯退一階；標記「不確定」則原地停留、明天重來。升到最右邊才算真的記住。</p></div>' +
+
+    '<h2 class="sec">最常答錯</h2>' +
+    '<div class="card">' +
+      wrongEver.sort(function(a,b){ return D.progress[b.id].wrong - D.progress[a.id].wrong; })
+      .slice(0,12).map(function(q){
+        var p = D.progress[q.id];
+        return '<div class="it"><span class="n">' + p.wrong + '錯</span><span class="tx">' + esc(q.stem) +
+          '<span class="m">' + esc(lineage(q).join('・')) + '・作答 ' + p.seen + ' 次・平均 ' + secs(p.ms/Math.max(1,p.seen)) +
+          '・熟練度 L' + p.lv + (p.unsure ? '・猜過 ' + p.unsure + ' 次' : '') + '</span></span></div>';
+      }).join('') +
+    '</div>';
+
+  var r = $('#rev'), a = $('#all');
+  if (r) r.onclick = function(){ startSingle(due, '到期複習'); go('drill'); };
+  if (a) a.onclick = function(){ startSingle(wrongEver, '錯題總複習'); go('drill'); };
+}
+
+function refreshBadge(){
+  var n = BANK.filter(function(q){ return dueQ(q.id); }).length;
+  var el = $('#dueBadge');
+  el.className = n ? 'badge' : '';
+  el.textContent = n ? (n > 99 ? '99+' : n) : '';
+}
+
+/* ===================== 統計分頁 ===================== */
+function renderStats(){
+  var seen = BANK.filter(function(q){ return seenQ(q.id); });
+  if (!seen.length){
+    $('#s-stats').innerHTML = '<div class="empty"><b>還沒有作答紀錄</b>做完第一題後，這裡會顯示各科正確率、答題速度與弱點主題。</div>';
+    return;
+  }
+  var att = 0, rt = 0, ms = 0;
+  seen.forEach(function(q){ var p = D.progress[q.id]; att += p.seen; rt += p.right; ms += p.ms; });
+
+  function group(fn){
+    var m = {};
+    seen.forEach(function(q){
+      var k = fn(q); if (!k) return;
+      if (!m[k]) m[k] = { seen:0, right:0, ms:0 };
+      var p = D.progress[q.id];
+      m[k].seen += p.seen; m[k].right += p.right; m[k].ms += p.ms;
+    });
+    return Object.keys(m).map(function(k){
+      return { k:k, seen:m[k].seen, right:m[k].right, ms:m[k].ms,
+               acc: Math.round(m[k].right / Math.max(1, m[k].seen) * 100) };
+    });
+  }
+  function bar(x, showAcc){
+    var cls = showAcc ? (x.acc < 60 ? ' w' : (x.acc >= 85 ? ' s' : '')) : '';
+    var w = showAcc ? x.acc : Math.min(100, (x.ms/x.seen)/120000*100);
+    var right = showAcc ? (x.acc + '%　' + x.right + '/' + x.seen) : secs(x.ms/x.seen) + ' / 題';
+    return '<div class="bar' + cls + '"><div class="t"><span>' + esc(x.k) + '</span>' +
+      '<span class="r">' + right + '</span></div>' +
+      '<div class="rail"><i style="width:' + w.toFixed(0) + '%"></i></div></div>';
+  }
+
+  var bySub = group(function(q){ return q.exam; }).sort(function(a,b){ return a.acc - b.acc; });
+  var byTop = group(function(q){ return q.part ? (q.part + '・' + (q.topic || '其他')) : q.topic; })
+                .filter(function(x){ return x.seen >= 2; })
+                .sort(function(a,b){ return a.acc - b.acc; });
+
+  $('#s-stats').innerHTML =
+    '<h2 class="sec">總覽</h2>' +
+    '<div class="kpis">' +
+      '<div class="kpi"><div class="v">' + Math.round(rt/Math.max(1,att)*100) + '<small>%</small></div><div class="l">總正確率</div></div>' +
+      '<div class="kpi"><div class="v">' + att + '</div><div class="l">累計作答題次</div></div>' +
+      '<div class="kpi"><div class="v">' + Math.round(ms/Math.max(1,att)/1000) + '<small>秒</small></div><div class="l">每題平均耗時</div></div>' +
+      '<div class="kpi"><div class="v">' + streak() + '</div><div class="l">連續練習天數</div></div>' +
+    '</div>' +
+
+    '<h2 class="sec">各科正確率（由弱到強）</h2>' +
+    '<div class="card">' + bySub.map(function(x){ return bar(x, true); }).join('') + '</div>' +
+
+    (byTop.length ? '<h2 class="sec">子科目與主題強弱</h2><div class="card">' +
+      byTop.slice(0,10).map(function(x){ return bar(x, true); }).join('') + '</div>' : '') +
+
+    '<h2 class="sec">答題速度</h2>' +
+    '<div class="card">' +
+      bySub.slice().sort(function(a,b){ return b.ms/b.seen - a.ms/a.seen; })
+        .map(function(x){ return bar(x, false); }).join('') +
+    '</div>' +
+    '<p class="hint" style="padding:0 4px;margin:9px 0 0">滿格為 2 分鐘。三等選擇題每題約 60–90 秒是合理節奏。</p>' +
+
+    '<h2 class="sec">題庫涵蓋率</h2>' +
+    '<div class="card">' + EXAM_NAMES.filter(function(s){ return countBy(function(q){ return q.exam; }, s); }).map(function(s){
+      var all = BANK.filter(function(q){ return q.exam === s; }).length;
+      var done = BANK.filter(function(q){ return q.exam === s && seenQ(q.id); }).length;
+      return '<div class="bar"><div class="t"><span>' + esc(s) + '</span><span class="r">' + done + ' / ' + all + '</span></div>' +
+        '<div class="rail"><i style="width:' + (done/Math.max(1,all)*100).toFixed(0) + '%"></i></div></div>';
+    }).join('') + '</div>';
+}
+
+function streak(){
+  if (!D.days.length) return 0;
+  var set = {}; D.days.forEach(function(d){ set[d] = 1; });
+  var n = 0, d = new Date();
+  if (!set[d.toISOString().slice(0,10)]) d.setDate(d.getDate() - 1);
+  while (set[d.toISOString().slice(0,10)]){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+
+/* ===================== 題庫分頁 ===================== */
+var TPL = '[\n' +
+'  {\n' +
+'    "id": "CON-101",\n' +
+'    "exam": "綜合法政知識",\n' +
+'    "part": "中華民國憲法",\n' +
+'    "topic": "中央政府體制",\n' +
+'    "stem": "題幹文字……",\n' +
+'    "options": ["選項A", "選項B", "選項C", "選項D"],\n' +
+'    "answer": 2,\n' +
+'    "explanation": "整題的解析……",\n' +
+'    "why": ["A錯在……", "B錯在……", "C正解，因為……", "D錯在……"],\n' +
+'    "source": "112年外特三等",\n' +
+'    "legal": {\n' +
+'      "flagged": true,\n' +
+'      "oldAnswer": 1,\n' +
+'      "note": "本題於某年修法後答案變動，說明……"\n' +
+'    }\n' +
+'  }\n' +
+']';
+
+function renderBank(){
+  var flagged = BANK.filter(function(q){ return q.legal && q.legal.flagged; }).length;
+  $('#s-bank').innerHTML =
+    '<h2 class="sec">現有題庫</h2>' +
+    '<div class="kpis">' +
+      '<div class="kpi"><div class="v">' + BANK.length + '</div><div class="l">總題數</div></div>' +
+      '<div class="kpi"><div class="v">' + flagged + '</div><div class="l">法規時效標記</div></div>' +
+    '</div>' +
+    '<div class="card" style="margin-top:10px">' + EXAMS.map(function(e){
+      var n = BANK.filter(function(q){ return q.exam === e.name; }).length;
+      var subLine = e.parts.length
+        ? e.parts.map(function(pt){
+            return esc(pt) + ' ' + BANK.filter(function(q){ return q.part === pt; }).length; }).join('　')
+        : '';
+      return '<div class="bar"><div class="t"><span>' + esc(e.name) + '</span><span class="r">' + n + ' 題</span></div>' +
+        '<div class="rail"><i style="width:' + (n/Math.max(1,BANK.length)*100).toFixed(0) + '%"></i></div>' +
+        (subLine ? '<div class="hint" style="margin-top:7px">' + subLine + '</div>' : '') +
+        '<div class="hint" style="margin-top:6px">' + esc(e.note) + '</div></div>';
+    }).join('') + '</div>' +
+
+    '<h2 class="sec">匯入題目</h2>' +
+    '<div class="card"><div class="pad">' +
+      '<p class="hint" style="margin:0 0 11px">answer 是正解索引，從 0 起算（0＝A、1＝B、2＝C、3＝D）。id 重複會覆蓋舊題，其餘保留。</p>' +
+      '<input type="file" id="filePick" accept=".json,application/json" style="display:none">' +
+      '<button class="btn tiny" id="pickBtn" style="margin-top:0">選擇檔案匯入</button>' +
+      '<div id="m1"></div>' +
+      '<details style="margin-top:14px"><summary class="hint" style="cursor:pointer">改用貼上文字（進階）</summary>' +
+        '<textarea id="ta" placeholder="在這裡貼上題目 JSON…" style="margin-top:10px"></textarea>' +
+        '<button class="btn sec tiny" id="imp">匯入貼上的內容</button>' +
+        '<button class="btn sec tiny" id="tpl">填入格式範本</button>' +
+      '</details>' +
+    '</div></div>' +
+
+    '<h2 class="sec">格式說明</h2>' +
+    '<pre class="code">' + esc(TPL) + '</pre>' +
+    '<div class="card" style="margin-top:10px">' +
+      '<div class="row"><div><div class="lab">exam（必填）</div><div class="hint">必須是六大考科之一：國文／綜合法政知識／外國文／國際公法／國際關係與近代外交史／國際經濟。</div></div></div>' +
+      '<div class="row"><div><div class="lab">part</div><div class="hint">只有「綜合法政知識」需要填，值為 中華民國憲法／兩岸關係／比較政府與政治。其他考科留空或省略。</div></div></div>' +
+      '<div class="row"><div><div class="lab">why</div><div class="hint">選填。逐一說明每個選項為何對或錯，順序與 options 一致。</div></div></div>' +
+      '<div class="row"><div><div class="lab">source</div><div class="hint">來源年度與考試名稱。含「AI 生成」字樣時，作答畫面會另外標色。</div></div></div>' +
+      '<div class="row"><div><div class="lab">legal</div><div class="hint">選填。flagged 為 true 時，作答後顯示「當年公布答案」與「現行法下答案」對照；oldAnswer 省略時視為與 answer 相同。</div></div></div>' +
+    '</div>' +
+
+    '<h2 class="sec">備份與重設</h2>' +
+    '<div class="card"><div class="pad">' +
+      '<button class="btn sec tiny" id="exp" style="margin-top:0">匯出備份檔（題庫＋進度）</button>' +
+      '<p class="hint" style="margin:11px 0 0">還原備份：把備份檔內容整份貼進上面的匯入框，系統會自動辨識。</p>' +
+    '</div></div>' +
+    '<div class="card"><div class="pad">' +
+      '<button class="btn sec tiny" id="c1" style="margin-top:0">清除作答進度，保留題庫</button>' +
+      '<button class="btn sec tiny" id="c2">全部重設回範例題</button>' +
+      '<div id="m2"></div>' +
+    '</div></div>';
+
+  $('#tpl').onclick = function(){ $('#ta').value = TPL; };
+  $('#imp').onclick = function(){ doImport($('#ta').value); };
+  $('#pickBtn').onclick = function(){ $('#filePick').click(); };
+  $('#filePick').onchange = function(e){
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var m = $('#m1');
+    m.innerHTML = '<div class="msg" style="background:var(--line-2);color:var(--tx-2)">讀取中…</div>';
+    var reader = new FileReader();
+    reader.onload = function(){ doImport(String(reader.result)); e.target.value = ''; };
+    reader.onerror = function(){ m.innerHTML = '<div class="msg err">檔案讀取失敗，請重試一次。</div>'; e.target.value = ''; };
+    reader.readAsText(f, 'utf-8');
+  };
+  $('#exp').onclick = function(){
+    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days }, null, 2)], { type:'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'waite-quiz-backup-' + today() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    $('#m2').innerHTML = '<div class="msg ok">備份檔已下載。</div>';
+  };
+  $('#c1').onclick = function(){
+    if (!confirm('清除所有作答紀錄與複習排程？題庫會保留。')) return;
+    D.progress = {}; D.days = []; save(); refreshBadge(); renderBank();
+    $('#m2').innerHTML = '<div class="msg ok">作答進度已清除。</div>';
+  };
+  $('#c2').onclick = function(){
+    if (!confirm('題庫與所有進度都會刪除，回到初始範例題。確定嗎？')) return;
+    BANK = normalizeAll(SEED.slice());
+    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), bank:BANK };
+    save(); refreshBadge(); renderBank(); renderDrill();
+  };
+}
+
+function doImport(rawText){
+  var m = $('#m1'), raw = String(rawText || '').trim(), obj;
+  if (!raw){ m.innerHTML = '<div class="msg err">請先貼上內容。</div>'; return; }
+  try { obj = JSON.parse(raw); }
+  catch(e){ m.innerHTML = '<div class="msg err">JSON 格式有誤：' + esc(e.message) +
+    '。常見原因是缺逗號、引號未成對，或使用了全形標點。</div>'; return; }
+
+  // 備份檔還原
+  if (obj && obj._backup && Array.isArray(obj.bank)){
+    BANK = normalizeAll(obj.bank); D.bank = BANK;
+    D.progress = obj.progress || {}; D.days = obj.days || [];
+    save(); refreshBadge(); renderDrill();
+    m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄一併回復。</div>';
+    $('#ta').value = ''; setTimeout(renderBank, 400); return;
+  }
+
+  if (!Array.isArray(obj)){ m.innerHTML = '<div class="msg err">最外層必須是陣列，請用 [ ] 包住所有題目。</div>'; return; }
+
+  var bad = [];
+  obj.forEach(function(q, i){
+    if (!q || !q.id) bad.push('第 ' + (i+1) + ' 題缺少 id');
+    else if (!q.stem) bad.push(q.id + ' 缺少 stem');
+    else if (!Array.isArray(q.options) || q.options.length < 2) bad.push(q.id + ' 的 options 至少要 2 個');
+    else if (typeof q.answer !== 'number' || q.answer < 0 || q.answer >= q.options.length) bad.push(q.id + ' 的 answer 超出選項範圍');
+    else if (!q.exam && !q.subject) bad.push(q.id + ' 缺少 exam（考科）');
+    else if (q.exam && EXAM_NAMES.indexOf(q.exam) < 0 && !LEGACY[q.exam]) bad.push(q.id + ' 的 exam「' + q.exam + '」不在六大考科之內');
+  });
+  if (bad.length){ m.innerHTML = '<div class="msg err">' + bad.slice(0,6).map(esc).join('<br>') +
+    (bad.length > 6 ? '<br>…另有 ' + (bad.length-6) + ' 筆' : '') + '</div>'; return; }
+
+  var add = 0, upd = 0;
+  obj.forEach(function(q){
+    var i = -1;
+    BANK.forEach(function(x, k){ if (x.id === q.id) i = k; });
+    normalize(q);
+    if (i >= 0){ BANK[i] = q; upd++; } else { BANK.push(q); add++; }
+  });
+  D.bank = BANK; save();
+  m.innerHTML = '<div class="msg ok">匯入完成：新增 ' + add + ' 題、更新 ' + upd + ' 題，題庫共 ' + BANK.length + ' 題。</div>';
+  $('#ta').value = '';
+  setTimeout(function(){ renderBank(); }, 400);
+}
+
+/* ===================== 主題（淺色／深色／自動） ===================== */
+var THEME_SEQ = ['auto', 'light', 'dark'];
+var THEME_META = {
+  auto:  { ic: '🌓', lb: '自動' },
+  light: { ic: '☀️', lb: '淺色' },
+  dark:  { ic: '🌙', lb: '深色' }
+};
+function applyTheme(t){
+  if (THEME_SEQ.indexOf(t) < 0) t = 'auto';
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  var ic = $('#themeIc'), lb = $('#themeLb'), btn = $('#themeBtn');
+  if (ic) ic.textContent = THEME_META[t].ic;
+  if (lb) lb.textContent = THEME_META[t].lb;
+  if (btn) btn.setAttribute('aria-label', '目前顯示模式：' + THEME_META[t].lb + '，點擊切換');
+  var mc = document.querySelector('meta[name="theme-color"]');
+  if (mc){
+    var dark = (t === 'dark') || (t === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    mc.setAttribute('content', dark ? '#131417' : '#FAFAF8');
+  }
+}
+function cycleTheme(){
+  var cur = D.settings.theme || 'auto';
+  var next = THEME_SEQ[(THEME_SEQ.indexOf(cur) + 1) % THEME_SEQ.length];
+  D.settings.theme = next;
+  save();
+  applyTheme(next);
+}
+
+/* ===================== 冒險分頁 ===================== */
+var SHOW_AVATAR_PICKER = false;
+var ADV_OPEN = { challenge:true };
+function examIcon(name){
+  var map = { '國文':'📜', '綜合法政知識':'⚖️', '外國文':'🌐',
+    '國際公法':'🏛️', '國際關係與近代外交史':'🗺️', '國際經濟':'💹' };
+  return map[name] || '👾';
+}
+function accSection(key, title, sub, bodyHtml, defaultOpen){
+  var open = ADV_OPEN.hasOwnProperty(key) ? ADV_OPEN[key] : !!defaultOpen;
+  return '<div class="accSection">' +
+    '<button class="accHead" data-acc="' + key + '" aria-expanded="' + open + '">' +
+      '<span class="accTitle">' + esc(title) + '</span>' +
+      (sub ? '<span class="accSub">' + esc(sub) + '</span>' : '') +
+      '<span class="accChevron">' + (open ? '▾' : '▸') + '</span>' +
+    '</button>' +
+    (open ? '<div class="accBody">' + bodyHtml + '</div>' : '') +
+  '</div>';
+}
+
+function renderAdventure(){
+  if (S && S.mode === 'battle'){ renderBattle(); return; }
+
+  var lv = D.rpg.level, need = xpForLevel(lv), pct = Math.min(100, Math.round(D.rpg.xp/need*100));
+  var atk = rpgAtk(), hp = rpgMaxHp(), lootB = rpgLootBonus(), dmgR = rpgDmgReduction();
+  var wp = itemById(D.rpg.equip.weapon), ar = itemById(D.rpg.equip.armor),
+      hl = itemById(D.rpg.equip.helmet), bt = itemById(D.rpg.equip.boots), ac = itemById(D.rpg.equip.accessory);
+  var equippedCount = [wp,ar,hl,bt,ac].filter(Boolean).length;
+  var badgeCount = Array.isArray(D.rpg.badges) ? D.rpg.badges.length : 0;
+  var due = BANK.filter(function(q){ return dueQ(q.id); }).length;
+
+  $('#s-adventure').innerHTML =
+    '<h2 class="sec">角色</h2>' +
+    '<div class="charCard">' +
+      '<button class="avatar" id="avatarBtn" aria-label="更換造型">' + D.rpg.avatar + '</button>' +
+      '<div class="charInfo">' +
+        '<div class="lvRow">Lv.' + lv + '<span class="gold">💰 ' + D.rpg.gold + '</span></div>' +
+        '<div class="titleTag">' + esc(currentTitle(lv)) + '</div>' +
+        '<div class="xpBar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="xpLab">' + D.rpg.xp + ' / ' + need + ' EXP</div>' +
+      '</div>' +
+    '</div>' +
+    (SHOW_AVATAR_PICKER ? '<div class="card" style="margin-top:8px">' + avatarPickerHTML() + '</div>' : '') +
+    '<div class="statRow"><span>⚔️ 攻擊 ' + atk + '</span><span>❤️ 生命 ' + hp + '</span><span>🎁 掉寶 +' + lootB + '%</span><span>🛡️ 減傷 ' + dmgR + '%</span></div>' +
+
+    accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
+
+    accSection('subject', '分科屬性', '', 
+      '<p class="hint" style="margin:0 0 9px">科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。</p>' +
+      '<div class="card">' + subjectAttrHTML() + '</div>') +
+
+    accSection('equip', '裝備欄', equippedCount + ' / 5',
+      '<div class="card">' + slotRow('weapon','武器',wp) + slotRow('armor','防具',ar) + slotRow('helmet','頭盔',hl) + slotRow('boots','鞋子',bt) + slotRow('accessory','飾品',ac) + '</div>') +
+
+    accSection('shop', '商店', '',
+      '<p class="hint" style="margin:0 0 9px">稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。</p>' +
+      shopSlotHTML('weapon','武器','🗡️') +
+      shopSlotHTML('armor','防具','🛡️') +
+      shopSlotHTML('helmet','頭盔','🪖') +
+      shopSlotHTML('boots','鞋子','👢') +
+      shopSlotHTML('accessory','飾品','💍')) +
+
+    accSection('inv', '背包', D.rpg.inv.length + ' 件',
+      (D.rpg.inv.length
+        ? '<p class="hint" style="margin:0 0 9px">用不到的裝備可以「分解」換金幣，或當「素材」半價強化目前裝備的同部位裝備（只在該部位有裝備時才會出現此選項）。</p><div class="card">' + D.rpg.inv.map(invRowHTML).join('') + '</div>'
+        : '<p class="hint" style="margin:0 2px">還沒有任何裝備，打怪或到商店購買吧。</p>')) +
+
+    accSection('challenge', '選擇挑戰', due ? due + ' 題待複習' : '',
+      '<p class="hint" style="margin:0 0 9px">答對造成傷害、答錯會被反擊；不論輸贏，作答紀錄與複習排程都會照常保存。</p>' +
+      challengeCardsHTML(), true);
+
+  bindAdventureEvents();
+  window.scrollTo(0,0);
+}
+
+function bonusLabel(cfg, stars){
+  var v = stars * cfg.per;
+  if (cfg.effect === 'atk') return '+' + v + ' 攻擊';
+  if (cfg.effect === 'hp') return '+' + v + ' 生命';
+  if (cfg.effect === 'goldPct') return '+' + v + '% 金幣';
+  if (cfg.effect === 'xpPct') return '+' + v + '% 經驗';
+  return '';
+}
+function subjectAttrHTML(){
+  var rows = Object.keys(SUBJECT_ATTR).map(function(name){
+    var cfg = SUBJECT_ATTR[name], m = subjectMastery(name);
+    if (!m.total) return '';
+    var stars = '★'.repeat(m.stars) + '☆'.repeat(5 - m.stars);
+    return '<div class="attrRow"><span class="attrIcon">' + cfg.icon + '</span>' +
+      '<span class="attrInfo"><span class="attrName">' + esc(name) + '・' + cfg.attr + '</span>' +
+      '<span class="attrStars">' + stars + '</span></span>' +
+      '<span class="attrBonus">' + bonusLabel(cfg, m.stars) + '</span></div>';
+  }).join('');
+  return rows || '<p class="hint" style="margin:0;padding:14px">匯入題目後，讀得越熟，這裡會顯示對應的屬性加成。</p>';
+}
+
+function avatarPickerHTML(){
+  return '<div class="avatarGrid">' + AVATARS.map(function(a){
+    var locked = D.rpg.level < a.unlockLv;
+    var selected = D.rpg.avatar === a.icon;
+    return '<button class="avatarOpt' + (selected ? ' sel' : '') + (locked ? ' locked' : '') + '"' +
+      ' data-avatar="' + a.icon + '"' + (locked ? ' disabled' : '') + '>' +
+      '<span class="avOptIcon">' + (locked ? '🔒' : a.icon) + '</span>' +
+      '<span class="avOptName">' + (locked ? 'Lv.' + a.unlockLv : esc(a.name)) + '</span>' +
+    '</button>';
+  }).join('') + '</div>';
+}
+
+function achievementsHTML(){
+  if (!Array.isArray(D.rpg.badges)) D.rpg.badges = [];
+  var unlocked = D.rpg.badges.length, total = ACHIEVEMENTS.length;
+  var rows = ACHIEVEMENTS.map(function(a){
+    var got = D.rpg.badges.indexOf(a.id) >= 0;
+    return '<div class="badgeRow' + (got ? '' : ' locked') + '">' +
+      '<span class="badgeIcon">' + (got ? a.icon : '🔒') + '</span>' +
+      '<span class="badgeInfo"><span class="badgeName">' + esc(a.name) + '</span>' +
+      '<span class="badgeDesc">' + esc(a.desc) + '</span></span>' +
+      (got ? '<span class="badgeGot">✓</span>' : '') +
+    '</div>';
+  }).join('');
+  return '<p class="hint" style="margin:0 0 9px">已解鎖 ' + unlocked + ' / ' + total + '</p><div class="card">' + rows + '</div>';
+}
+
+function slotRow(slot, label, item){
+  return '<div class="row"><div><div class="lab">' + label + '</div>' +
+    (item ? '<div class="hint">' + item.icon + ' ' + esc(item.name) + (statText(item) ? '・' + statText(item) : '') + '</div>'
+          : '<div class="hint">尚未裝備</div>') +
+    '</div>' +
+    (item ? '<button class="btn sec tiny" data-unequip="' + slot + '" style="margin-top:0">卸下</button>' : '') +
+  '</div>';
+}
+
+function shopRowHTML(it){
+  var owned = D.rpg.inv.indexOf(it.id) >= 0;
+  return '<div class="itRow rarity-' + it.rarity + '">' +
+    '<span class="itIcon">' + it.icon + '</span>' +
+    '<span class="itInfo"><span class="itName">' + esc(it.name) + '</span><span class="itStat">' + statText(it) + '</span></span>' +
+    (owned ? '<span class="owned">已擁有</span>' : '<button class="btn tiny" data-buy="' + it.id + '">💰' + it.cost + '</button>') +
+  '</div>';
+}
+function shopSlotHTML(slot, label, icon){
+  var list = ITEMS.filter(function(i){ return i.slot === slot && !i.dropOnly; });
+  var ownedCount = list.filter(function(i){ return D.rpg.inv.indexOf(i.id) >= 0; }).length;
+  return accSection('shop-' + slot, icon + ' ' + label, ownedCount + ' / ' + list.length,
+    '<div class="card">' + list.map(shopRowHTML).join('') + '</div>');
+}
+
+var RARITY_ORDER = { common:0, rare:1, epic:2, legendary:3 };
+function materialsFor(slot, excludeId){
+  return D.rpg.inv.filter(function(iid){
+    if (iid === excludeId) return false;
+    var it = itemById(iid);
+    return it && it.slot === slot;
+  }).sort(function(a,b){ return RARITY_ORDER[itemById(a).rarity] - RARITY_ORDER[itemById(b).rarity]; });
+}
+function invRowHTML(id){
+  var it = itemById(id); if (!it) return '';
+  var equipped = D.rpg.equip[it.slot] === id;
+  var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
+  var sv = sellValue(it);
+  var mats = equipped ? materialsFor(it.slot, id) : [];
+  var fuseCost = Math.round(cost/2);
+  return '<div class="itRow2 rarity-' + it.rarity + '">' +
+    '<div class="itTop">' +
+      '<span class="itIcon">' + it.icon + '</span>' +
+      '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + '</span>' +
+      '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
+      '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
+    '</div>' +
+    '<div class="itSub">' +
+      (maxed ? '<span class="owned">已滿級</span>' : '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>') +
+      '<button class="btn tiny sec warn" data-sell="' + id + '">分解 +' + sv + '💰</button>' +
+    '</div>' +
+    (mats.length && !maxed
+      ? '<div class="itSub"><button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button></div>'
+      : '') +
+  '</div>';
+}
+
+function challengeCardsHTML(){
+  var due = BANK.filter(function(q){ return dueQ(q.id); });
+  var html = '<div class="card chCard" data-battle="review"' + (due.length ? '' : ' style="opacity:.45"') + '>' +
+    '<div class="chIcon">🧟</div><div class="chInfo"><div class="chName">錯題複習池</div>' +
+    '<div class="hint">' + (due.length ? due.length + ' 題待複習，適合打怪順便複習' : '目前沒有到期的複習題') + '</div></div>' +
+    (due.length ? '<button class="btn tiny">挑戰</button>' : '') + '</div>';
+
+  EXAM_NAMES.forEach(function(name){
+    var pool = BANK.filter(function(q){ return q.exam === name; });
+    if (!pool.length) return;
+    html += '<div class="card chCard" data-battle="exam" data-exam="' + esc(name) + '">' +
+      '<div class="chIcon">' + examIcon(name) + '</div><div class="chInfo"><div class="chName">' + esc(name) + '</div>' +
+      '<div class="hint">' + pool.length + ' 題可挑戰</div></div>' +
+      '<button class="btn tiny">挑戰</button></div>';
+  });
+  return html;
+}
+
+function renderAdventureKeepScroll(){
+  var y = window.scrollY;
+  renderAdventure();
+  window.scrollTo(0, y);
+}
+function bindAdventureEvents(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-acc]'), function(b){
+    b.onclick = function(){
+      var key = b.dataset.acc;
+      var cur = ADV_OPEN.hasOwnProperty(key) ? ADV_OPEN[key] : false;
+      ADV_OPEN[key] = !cur;
+      renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-buy]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.buy, it = itemById(id);
+      if (!it || D.rpg.gold < it.cost || D.rpg.inv.indexOf(id) >= 0) return;
+      D.rpg.gold -= it.cost; D.rpg.inv.push(id); save(); checkAchievements(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-equip]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.equip, it = itemById(id);
+      if (!it) return;
+      D.rpg.equip[it.slot] = id; save(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-unequip]'), function(b){
+    b.onclick = function(){ D.rpg.equip[b.dataset.unequip] = null; save(); renderAdventureKeepScroll(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-enchant]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.enchant, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      if (lv >= ENCHANT_MAX) return;
+      var cost = enchantCost(it, id);
+      if (D.rpg.gold < cost) return;
+      D.rpg.gold -= cost;
+      if (!D.rpg.enchant) D.rpg.enchant = {};
+      D.rpg.enchant[id] = lv + 1;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sell]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.sell, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      var sv = sellValue(it);
+      var msg = '確定要分解「' + it.name + (lv ? ' +' + lv : '') + '」嗎？' +
+        (lv ? '強化等級將一併消失，' : '') + '可換回 ' + sv + ' 金幣。';
+      if (!confirm(msg)) return;
+      Object.keys(D.rpg.equip).forEach(function(slot){ if (D.rpg.equip[slot] === id) D.rpg.equip[slot] = null; });
+      var idx = D.rpg.inv.indexOf(id);
+      if (idx >= 0) D.rpg.inv.splice(idx, 1);
+      if (D.rpg.enchant && D.rpg.enchant[id] != null) delete D.rpg.enchant[id];
+      D.rpg.gold += sv;
+      save(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-fuse]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.fuse, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      if (lv >= ENCHANT_MAX) return;
+      var mats = materialsFor(it.slot, id);
+      if (!mats.length) return;
+      var matId = mats[0], matIt = itemById(matId);
+      var cost = enchantCost(it, id), fuseCost = Math.round(cost / 2);
+      if (D.rpg.gold < fuseCost) return;
+      var msg = '用「' + matIt.name + '」當強化素材（將會消失），並花費 ' + fuseCost +
+        ' 金幣，把「' + it.name + '」強化到 +' + (lv + 1) + '？';
+      if (!confirm(msg)) return;
+      var idx = D.rpg.inv.indexOf(matId);
+      if (idx >= 0) D.rpg.inv.splice(idx, 1);
+      if (D.rpg.enchant && D.rpg.enchant[matId] != null) delete D.rpg.enchant[matId];
+      D.rpg.gold -= fuseCost;
+      if (!D.rpg.enchant) D.rpg.enchant = {};
+      D.rpg.enchant[id] = lv + 1;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-avatar]'), function(b){
+    if (b.disabled) return;
+    b.onclick = function(){
+      D.rpg.avatar = b.dataset.avatar; SHOW_AVATAR_PICKER = false; save(); renderAdventureKeepScroll();
+    };
+  });
+  var ab = $('#avatarBtn');
+  if (ab) ab.onclick = function(){ SHOW_AVATAR_PICKER = !SHOW_AVATAR_PICKER; renderAdventureKeepScroll(); };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-battle]'), function(card){
+    card.onclick = function(){
+      if (card.dataset.battle === 'review'){
+        var due = BANK.filter(function(q){ return dueQ(q.id); });
+        if (!due.length) return;
+        startBattle(due, 'review', '複習');
+      } else {
+        var name = card.dataset.exam;
+        var pool = BANK.filter(function(q){ return q.exam === name; });
+        if (!pool.length) return;
+        startBattle(pool, 'exam', name);
+      }
+    };
+  });
+}
+
+/* ===================== 冒險：戰鬥 ===================== */
+function monsterFor(kind, label, n){
+  var hp = Math.max(30, n * 12);
+  var atk = 4 + Math.floor(D.rpg.level/2) + Math.floor(Math.random()*3);
+  var icon = MONSTER_ICONS[Math.floor(Math.random() * MONSTER_ICONS.length)];
+  var name = (kind === 'review' ? '遺忘史萊姆・' : label + '魔像');
+  if (kind === 'review') name = '遺忘史萊姆';
+  return { name:name, icon:icon, hp:hp, maxHp:hp, atk:atk };
+}
+
+function startBattle(list, kind, label){
+  if (!list.length) return;
+  var queue = list.map(function(q){ return q.id; });
+  queue.sort(function(){ return Math.random() - .5; });
+  queue = queue.slice(0, Math.min(20, queue.length));
+  var maxHp = rpgMaxHp();
+  S = {
+    mode:'battle', label:label,
+    monster: monsterFor(kind, label, queue.length),
+    queue:queue, qIndex:0,
+    id:null, pick:null, cut:[], unsure:false, graded:false,
+    playerHp:maxHp, playerMaxHp:maxHp,
+    n:0, right:0, ms:0, qStart:0, combo:0,
+    lastReward:null, lastDmg:0, lastTaken:0
+  };
+  nextBattleQ();
+}
+
+function nextBattleQ(){
+  if (S.qIndex >= S.queue.length){ endBattle(S.monster.hp <= 0 ? 'victory' : 'draw'); return; }
+  S.id = S.queue[S.qIndex++]; S.pick = null; S.cut = []; S.unsure = false; S.graded = false; S.qStart = Date.now();
+  renderBattle();
+}
+
+function renderBattle(){
+  var q = BANK.filter(function(x){ return x.id === S.id; })[0];
+  if (!q){ endBattle('draw'); return; }
+  var lg = q.legal || {}, ok = S.graded && S.pick === q.answer, m = S.monster;
+
+  $('#s-adventure').innerHTML =
+    '<div class="battleTop">' +
+      '<button class="x" id="flee" aria-label="逃跑並儲存進度">✕</button>' +
+      '<span class="mid">' + esc(S.label) + '　第 ' + S.qIndex + ' / ' + S.queue.length + ' 題</span>' +
+      '<span class="clk" id="clk">00:00</span>' +
+    '</div>' +
+    '<div class="hpCard">' +
+      '<div class="hpRow"><span class="hpIcon">' + m.icon + '</span><span class="hpName">' + esc(m.name) + '</span>' +
+        '<span class="hpNum">' + Math.max(0,m.hp) + ' / ' + m.maxHp + '</span></div>' +
+      '<div class="hpBar"><i style="width:' + Math.max(0, m.hp/m.maxHp*100) + '%"></i></div>' +
+      '<div class="hpRow me"><span class="hpIcon">🧙</span><span class="hpName">你</span>' +
+        '<span class="hpNum">' + Math.max(0,S.playerHp) + ' / ' + S.playerMaxHp + '</span></div>' +
+      '<div class="hpBar me"><i style="width:' + Math.max(0, S.playerHp/S.playerMaxHp*100) + '%"></i></div>' +
+    '</div>' +
+    '<div class="q">' +
+      '<div class="meta">' +
+        lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
+        (lg.flagged ? '<span class="law">⚠ 法規時效</span>' : '') +
+      '</div>' +
+      '<p class="stem">' + esc(q.stem) + '</p>' +
+      (S.graded ? '' : '<p class="tip">點選項即出招；答對造成傷害，答錯會被反擊。</p>') +
+      '<div class="opts" id="opts">' + optsHTML(q, ok) + '</div>' +
+      (S.graded ? '' :
+        '<button class="unsure" id="uns" aria-pressed="' + S.unsure + '">' +
+          '<span class="bx">✓</span><span>我不太確定 — 答對也排進複習</span></button>') +
+      (S.graded ? verdictHTML(q, ok) + battleFxHTML(ok) + solHTML(q) : '') +
+    '</div>' +
+    (S.graded ? '<button class="btn" id="nx">' +
+      (S.qIndex >= S.queue.length || m.hp <= 0 || S.playerHp <= 0 ? '查看結果' : '下一題') + '</button>' : '');
+
+  bindOpts(q);
+  var u = $('#uns'); if (u) u.onclick = function(){ S.unsure = !S.unsure; var y = window.scrollY; renderBattle(); window.scrollTo(0, y); };
+  $('#flee').onclick = function(){
+    if (confirm('離開戰鬥？已賺到的金幣經驗會保留，怪物會逃走。')){ stopClock(); S = null; renderAdventure(); }
+  };
+  var nx = $('#nx');
+  if (nx) nx.onclick = function(){
+    if (m.hp <= 0) endBattle('victory');
+    else if (S.playerHp <= 0) endBattle('defeat');
+    else nextBattleQ();
+  };
+  S.graded ? stopClock() : startClock();
+  window.scrollTo(0,0);
+}
+
+function battleFxHTML(ok){
+  var rw = S.lastReward, tag = rw ? (' <span class="rw">+' + rw.gold + '💰 +' + rw.xp + '⭐' + (rw.leveled ? ' 🎉升級！' : '') + '</span>') : '';
+  if (ok) return '<div class="fx ok">⚔️ 造成 ' + S.lastDmg + ' 點傷害！' + tag + '</div>';
+  return '<div class="fx no">💥 被反擊，損失 ' + S.lastTaken + ' 點HP' + tag + '</div>';
+}
+
+function battleGrade(q){
+  var spent = Date.now() - S.qStart;
+  var ok = S.pick === q.answer;
+  var p = P(q.id);
+  p.seen++; p.ms += spent; p.at = Date.now();
+  if (ok) p.right++; else p.wrong++;
+  if (S.unsure) p.unsure++;
+  if (!ok) p.lv = Math.max(0, p.lv - 1);
+  else if (S.unsure) p.lv = Math.max(1, p.lv);
+  else p.lv = Math.min(MAX_LV, p.lv + 1);
+  p.due = Date.now() + ((!ok || S.unsure) ? 1 : INTERVALS[p.lv]) * DAY;
+  if (D.days.indexOf(today()) < 0) D.days.push(today());
+
+  S.lastReward = rpgAward(ok, S.unsure);
+
+  if (ok){
+    S.lastDmg = rpgAtk() + Math.floor(Math.random()*4);
+    S.monster.hp = Math.max(0, S.monster.hp - S.lastDmg);
+    S.lastTaken = 0;
+  } else {
+    var rawDmg = Math.max(1, S.monster.atk + Math.floor(Math.random()*3) - 2);
+    S.lastTaken = Math.max(1, Math.round(rawDmg * (1 - rpgDmgReduction()/100)));
+    S.playerHp = Math.max(0, S.playerHp - S.lastTaken);
+    S.lastDmg = 0;
+  }
+
+  S.graded = true; S.lastMs = spent; S.n++; if (ok) S.right++; S.ms += spent;
+  if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
+  else { S.combo = 0; }
+  save(); refreshBadge(); checkAchievements(); renderBattle();
+}
+
+function endBattle(result){
+  stopClock();
+  var m = S.monster, n = S.n, right = S.right, ms = S.ms;
+  var bonusGold, bonusXp, loot = null;
+  if (result === 'victory'){
+    bonusGold = 15 + Math.round(m.maxHp/3);
+    bonusXp = 10 + Math.round(m.maxHp/4);
+    loot = rollLoot();
+    D.rpg.wins = (D.rpg.wins || 0) + 1;
+  } else if (result === 'draw'){
+    bonusGold = 5; bonusXp = 5;
+  } else {
+    bonusGold = 2; bonusXp = 3;
+  }
+  D.rpg.gold += bonusGold;
+  D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + bonusGold;
+  var leveled = addXp(bonusXp);
+  if (loot && D.rpg.inv.indexOf(loot.id) < 0) D.rpg.inv.push(loot.id);
+  save(); refreshBadge();
+  S = null;
+  checkAchievements();
+  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled);
+}
+
+function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled){
+  var title = result === 'victory' ? '戰鬥勝利！' : (result === 'draw' ? '怪物逃走了' : '你撤退了');
+  var icon = result === 'victory' ? '🏆' : (result === 'draw' ? '💨' : '🏳️');
+  $('#s-adventure').innerHTML =
+    '<div class="score">' +
+      '<div style="font-size:44px">' + icon + '</div>' +
+      '<div class="c" style="font-size:19px;font-weight:700;margin-top:6px">' + title + '</div>' +
+      '<div class="m">本次作答 ' + n + ' 題・答對 ' + right + ' 題・耗時 ' + secs(ms) + '</div>' +
+      '<div class="m" style="margin-top:8px">獲得 +' + bonusGold + '💰　+' + bonusXp + '⭐' + (leveled ? '　🎉升級！' : '') + '</div>' +
+      (loot ? '<div class="lootBox rarity-' + loot.rarity + '"><span class="itIcon">' + loot.icon + '</span>掉落「' + esc(loot.name) + '」' + (statText(loot) ? '　' + statText(loot) : '') + '</div>' : '') +
+    '</div>' +
+    '<button class="btn" id="back">返回冒險</button>';
+  $('#back').onclick = function(){ renderAdventure(); };
+  window.scrollTo(0,0);
+}
+
+/* ===================== 分頁 ===================== */
+function go(tab){
+  Array.prototype.forEach.call(document.querySelectorAll('.screen'), function(s){ s.classList.remove('on'); });
+  $('#s-' + tab).classList.add('on');
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){
+    b.setAttribute('aria-pressed', b.dataset.tab === tab); });
+  if (tab === 'drill')  renderDrill();
+  if (tab === 'review') renderReview();
+  if (tab === 'stats')  renderStats();
+  if (tab === 'bank')   renderBank();
+  if (tab === 'adventure') renderAdventure();
+  window.scrollTo(0,0);
+}
+Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), function(b){
+  b.onclick = function(){ go(b.dataset.tab); };
+});
+$('#themeBtn').onclick = cycleTheme;
+
+/* ===================== 啟動 ===================== */
+(async function init(){
+  try {
+    var saved = await Store.get();
+    if (saved){
+      D.progress = saved.progress || {};
+      D.days = saved.days || [];
+      D.settings = Object.assign({}, DEF_SET, saved.settings || {});
+      BANK = normalizeAll((saved.bank && saved.bank.length) ? saved.bank : SEED.slice());
+      if (!Array.isArray(D.settings.subjects)) D.settings.subjects = [];
+      if (!Array.isArray(D.settings.parts)) D.settings.parts = [];
+      // 舊版存的科目名稱轉為新的考科名稱
+      D.settings.subjects = uniq(D.settings.subjects.map(function(s){
+        return LEGACY[s] ? LEGACY[s][0] : s; })).filter(function(s){ return EXAM_NAMES.indexOf(s) >= 0; });
+      D.rpg = Object.assign({}, DEF_RPG, saved.rpg || {});
+      D.rpg.equip = Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {});
+      D.rpg.enchant = Object.assign({}, (saved.rpg && saved.rpg.enchant) || {});
+      if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
+      D.rpg.badges = (saved.rpg && Array.isArray(saved.rpg.badges)) ? saved.rpg.badges.slice() : [];
+    } else {
+      D.settings = Object.assign({}, DEF_SET);
+      BANK = normalizeAll(SEED.slice());
+      D.rpg = Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[] });
+    }
+    D.bank = BANK;
+    save();
+    applyTheme(D.settings.theme || 'auto');
+    renderDrill();
+    refreshBadge();
+    checkAchievements();
+  } catch(err){
+    window.onerror('啟動失敗：' + err.message, '', 0);
+  }
+})();
+</script>
+</body>
+</html>
