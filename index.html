@@ -1697,7 +1697,7 @@ function renderBank(){
     reader.readAsText(f, 'utf-8');
   };
   $('#exp').onclick = function(){
-    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days }, null, 2)], { type:'application/json' });
+    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days, rpg:D.rpg }, null, 2)], { type:'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'waite-quiz-backup-' + today() + '.json';
@@ -1712,7 +1712,8 @@ function renderBank(){
   $('#c2').onclick = function(){
     if (!confirm('題庫與所有進度都會刪除，回到初始範例題。確定嗎？')) return;
     BANK = normalizeAll(SEED.slice());
-    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), bank:BANK };
+    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), bank:BANK,
+          rpg: Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[] }) };
     save(); refreshBadge(); renderBank(); renderDrill();
   };
 }
@@ -1728,8 +1729,15 @@ function doImport(rawText){
   if (obj && obj._backup && Array.isArray(obj.bank)){
     BANK = normalizeAll(obj.bank); D.bank = BANK;
     D.progress = obj.progress || {}; D.days = obj.days || [];
-    save(); refreshBadge(); renderDrill();
-    m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄一併回復。</div>';
+    D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
+    D.rpg.equip = Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {});
+    D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
+    D.rpg.inv = (obj.rpg && Array.isArray(obj.rpg.inv)) ? obj.rpg.inv.slice() : [];
+    D.rpg.badges = (obj.rpg && Array.isArray(obj.rpg.badges)) ? obj.rpg.badges.slice() : [];
+    save(); refreshBadge(); checkAchievements(); renderDrill();
+    m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄' +
+      (obj.rpg ? '與冒險頁進度' : '') + '一併回復。' +
+      (obj.rpg ? '' : '（這份備份檔是舊版本，不含冒險頁資料，角色會從頭開始）') + '</div>';
     $('#ta').value = ''; setTimeout(renderBank, 400); return;
   }
 
