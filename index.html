@@ -361,6 +361,39 @@ h2.sec:first-child{margin-top:14px}
 .xpLab{font-family:var(--num);font-size:11px;color:var(--tx-2);margin-top:4px}
 .statRow{display:flex;gap:14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
 
+.dollWrap{
+  position:relative;width:100%;max-width:260px;height:220px;margin:6px auto 10px;
+}
+.dollBody{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:92px;opacity:.92;filter:drop-shadow(0 6px 10px rgba(0,0,0,.12));
+  image-rendering:pixelated;
+}
+.dollSlot{
+  position:absolute;width:50px;height:50px;border-radius:14px;
+  background:var(--card);border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:23px;
+  cursor:pointer;transition:border-color .15s,transform .15s;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
+}
+.dollSlot:active{transform:scale(.94)}
+.dollSlot.filled{border-color:var(--brand);background:var(--brand-soft)}
+.dollSlot.active{border-color:var(--warn);border-width:2.5px}
+.dollEmpty{opacity:.35;filter:grayscale(1)}
+.dollSlot[data-doll="helmet"]{top:0;left:50%;transform:translateX(-50%)}
+.dollSlot[data-doll="weapon"]{top:78px;left:6px}
+.dollSlot[data-doll="armor"]{top:78px;left:50%;transform:translateX(-50%)}
+.dollSlot[data-doll="accessory"]{top:78px;right:6px}
+.dollSlot[data-doll="boots"]{bottom:0;left:50%;transform:translateX(-50%)}
+.dollDetail{margin-top:2px}
+.dollDetail .itRow2{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;margin-bottom:9px}
+.dollDetail .itRow2.rarity-common{border-left-color:#9AA0A6}
+.dollDetail .itRow2.rarity-rare{border-left-color:#4C8DFF}
+.dollDetail .itRow2.rarity-epic{border-left-color:#B356E0}
+.dollDetail .itRow2.rarity-legendary{border-left-color:#E0A82E}
+.dollDetail .card .itRow:first-child{border-radius:var(--r) var(--r) 0 0}
+.dollDetail .card .itRow:last-child{border-radius:0 0 var(--r) var(--r)}
+
 .avatarGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:13px}
 .avatarOpt{
   display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;
@@ -1697,7 +1730,7 @@ function renderBank(){
     reader.readAsText(f, 'utf-8');
   };
   $('#exp').onclick = function(){
-    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days, rpg:D.rpg }, null, 2)], { type:'application/json' });
+    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days }, null, 2)], { type:'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'waite-quiz-backup-' + today() + '.json';
@@ -1712,8 +1745,7 @@ function renderBank(){
   $('#c2').onclick = function(){
     if (!confirm('題庫與所有進度都會刪除，回到初始範例題。確定嗎？')) return;
     BANK = normalizeAll(SEED.slice());
-    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), bank:BANK,
-          rpg: Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[] }) };
+    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), bank:BANK };
     save(); refreshBadge(); renderBank(); renderDrill();
   };
 }
@@ -1729,15 +1761,8 @@ function doImport(rawText){
   if (obj && obj._backup && Array.isArray(obj.bank)){
     BANK = normalizeAll(obj.bank); D.bank = BANK;
     D.progress = obj.progress || {}; D.days = obj.days || [];
-    D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
-    D.rpg.equip = Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {});
-    D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
-    D.rpg.inv = (obj.rpg && Array.isArray(obj.rpg.inv)) ? obj.rpg.inv.slice() : [];
-    D.rpg.badges = (obj.rpg && Array.isArray(obj.rpg.badges)) ? obj.rpg.badges.slice() : [];
-    save(); refreshBadge(); checkAchievements(); renderDrill();
-    m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄' +
-      (obj.rpg ? '與冒險頁進度' : '') + '一併回復。' +
-      (obj.rpg ? '' : '（這份備份檔是舊版本，不含冒險頁資料，角色會從頭開始）') + '</div>';
+    save(); refreshBadge(); renderDrill();
+    m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄一併回復。</div>';
     $('#ta').value = ''; setTimeout(renderBank, 400); return;
   }
 
@@ -1799,7 +1824,8 @@ function cycleTheme(){
 
 /* ===================== 冒險分頁 ===================== */
 var SHOW_AVATAR_PICKER = false;
-var ADV_OPEN = { challenge:true };
+var ADV_OPEN = { challenge:true, equip:true };
+var ADV_SLOT_OPEN = null;
 function examIcon(name){
   var map = { '國文':'📜', '綜合法政知識':'⚖️', '外國文':'🌐',
     '國際公法':'🏛️', '國際關係與近代外交史':'🗺️', '國際經濟':'💹' };
@@ -1848,8 +1874,7 @@ function renderAdventure(){
       '<p class="hint" style="margin:0 0 9px">科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。</p>' +
       '<div class="card">' + subjectAttrHTML() + '</div>') +
 
-    accSection('equip', '裝備欄', equippedCount + ' / 5',
-      '<div class="card">' + slotRow('weapon','武器',wp) + slotRow('armor','防具',ar) + slotRow('helmet','頭盔',hl) + slotRow('boots','鞋子',bt) + slotRow('accessory','飾品',ac) + '</div>') +
+    accSection('equip', '裝備欄', equippedCount + ' / 5', dollHTML(), true) +
 
     accSection('shop', '商店', '',
       '<p class="hint" style="margin:0 0 9px">稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。</p>' +
@@ -1861,7 +1886,7 @@ function renderAdventure(){
 
     accSection('inv', '背包', D.rpg.inv.length + ' 件',
       (D.rpg.inv.length
-        ? '<p class="hint" style="margin:0 0 9px">用不到的裝備可以「分解」換金幣，或當「素材」半價強化目前裝備的同部位裝備（只在該部位有裝備時才會出現此選項）。</p><div class="card">' + D.rpg.inv.map(invRowHTML).join('') + '</div>'
+        ? '<p class="hint" style="margin:0 0 9px">用不到的裝備可以「分解」換金幣；強化、用素材強化與更換裝備請至上方「裝備欄」點選人物身上的部位操作。</p><div class="card">' + D.rpg.inv.map(invRowHTML).join('') + '</div>'
         : '<p class="hint" style="margin:0 2px">還沒有任何裝備，打怪或到商店購買吧。</p>')) +
 
     accSection('challenge', '選擇挑戰', due ? due + ' 題待複習' : '',
@@ -1920,13 +1945,66 @@ function achievementsHTML(){
   return '<p class="hint" style="margin:0 0 9px">已解鎖 ' + unlocked + ' / ' + total + '</p><div class="card">' + rows + '</div>';
 }
 
-function slotRow(slot, label, item){
-  return '<div class="row"><div><div class="lab">' + label + '</div>' +
-    (item ? '<div class="hint">' + item.icon + ' ' + esc(item.name) + (statText(item) ? '・' + statText(item) : '') + '</div>'
-          : '<div class="hint">尚未裝備</div>') +
-    '</div>' +
-    (item ? '<button class="btn sec tiny" data-unequip="' + slot + '" style="margin-top:0">卸下</button>' : '') +
-  '</div>';
+var DOLL_SLOTS = [
+  { key:'helmet',    label:'頭盔', icon:'🪖' },
+  { key:'weapon',    label:'武器', icon:'🗡️' },
+  { key:'armor',     label:'防具', icon:'🛡️' },
+  { key:'accessory', label:'飾品', icon:'💍' },
+  { key:'boots',     label:'鞋子', icon:'👢' },
+];
+function dollHTML(){
+  var slotBtns = DOLL_SLOTS.map(function(s){
+    var id = D.rpg.equip[s.key], it = itemById(id);
+    var filled = !!it, active = ADV_SLOT_OPEN === s.key;
+    return '<button class="dollSlot' + (filled ? ' filled' : '') + (active ? ' active' : '') + '"' +
+      ' data-doll="' + s.key + '" aria-label="' + s.label + '">' +
+      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') +
+    '</button>';
+  }).join('');
+  var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
+  var detail = ADV_SLOT_OPEN
+    ? slotDetailHTML(ADV_SLOT_OPEN)
+    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。</p>';
+  return body + detail;
+}
+function slotDetailHTML(slot){
+  var labelMap = {helmet:'頭盔', weapon:'武器', armor:'防具', boots:'鞋子', accessory:'飾品'};
+  var id = D.rpg.equip[slot], it = itemById(id);
+  var owned = D.rpg.inv.filter(function(iid){ var i = itemById(iid); return i && i.slot === slot && iid !== id; });
+  var html = '<div class="dollDetail">';
+  if (it){
+    var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
+    var mats = materialsFor(slot, id), fuseCost = Math.round(cost / 2);
+    html += '<div class="itRow2 rarity-' + it.rarity + '">' +
+      '<div class="itTop">' +
+        '<span class="itIcon">' + it.icon + '</span>' +
+        '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + '</span>' +
+        '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
+        '<button class="btn sec tiny" data-doll-unequip="' + slot + '">卸下</button>' +
+      '</div>' +
+      '<div class="itSub">' +
+        (maxed ? '<span class="owned">已滿級</span>' : '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>') +
+        (mats.length && !maxed ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '') +
+      '</div>' +
+    '</div>';
+  } else {
+    html += '<p class="hint" style="margin:0 0 9px">' + labelMap[slot] + '尚未裝備任何物品。</p>';
+  }
+  if (owned.length){
+    html += '<p class="hint" style="margin:2px 0 6px">更換' + labelMap[slot] + '：</p><div class="card">' +
+      owned.map(function(iid){
+        var i = itemById(iid), l = enchantLevel(iid);
+        return '<div class="itRow rarity-' + i.rarity + '">' +
+          '<span class="itIcon">' + i.icon + '</span>' +
+          '<span class="itInfo"><span class="itName">' + esc(i.name) + (l ? ' <span class="ench">+' + l + '</span>' : '') + '</span>' +
+          '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
+          '<button class="btn tiny sec" data-equip="' + iid + '">裝備</button>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+  html += '</div>';
+  return html;
 }
 
 function shopRowHTML(it){
@@ -1955,10 +2033,8 @@ function materialsFor(slot, excludeId){
 function invRowHTML(id){
   var it = itemById(id); if (!it) return '';
   var equipped = D.rpg.equip[it.slot] === id;
-  var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
+  var lv = enchantLevel(id);
   var sv = sellValue(it);
-  var mats = equipped ? materialsFor(it.slot, id) : [];
-  var fuseCost = Math.round(cost/2);
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
     '<div class="itTop">' +
       '<span class="itIcon">' + it.icon + '</span>' +
@@ -1967,12 +2043,8 @@ function invRowHTML(id){
       '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
     '</div>' +
     '<div class="itSub">' +
-      (maxed ? '<span class="owned">已滿級</span>' : '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>') +
       '<button class="btn tiny sec warn" data-sell="' + id + '">分解 +' + sv + '💰</button>' +
     '</div>' +
-    (mats.length && !maxed
-      ? '<div class="itSub"><button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button></div>'
-      : '') +
   '</div>';
 }
 
@@ -2024,6 +2096,16 @@ function bindAdventureEvents(){
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-unequip]'), function(b){
     b.onclick = function(){ D.rpg.equip[b.dataset.unequip] = null; save(); renderAdventureKeepScroll(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-doll]'), function(b){
+    b.onclick = function(){
+      var key = b.dataset.doll;
+      ADV_SLOT_OPEN = (ADV_SLOT_OPEN === key) ? null : key;
+      renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-doll-unequip]'), function(b){
+    b.onclick = function(){ D.rpg.equip[b.dataset.dollUnequip] = null; save(); renderAdventureKeepScroll(); };
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-enchant]'), function(b){
     b.onclick = function(){
