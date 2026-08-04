@@ -359,7 +359,7 @@ h2.sec:first-child{margin-top:14px}
 .xpBar{height:8px;background:var(--line-2);border-radius:4px;overflow:hidden;margin-top:8px}
 .xpBar i{display:block;height:100%;background:var(--brand);border-radius:4px;transition:width .4s}
 .xpLab{font-family:var(--num);font-size:11px;color:var(--tx-2);margin-top:4px}
-.statRow{display:flex;gap:14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
+.statRow{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
 
 .dollWrap{
   position:relative;width:100%;max-width:280px;height:260px;margin:6px auto 10px;
@@ -1948,6 +1948,7 @@ function renderAdventure(){
 
   var lv = D.rpg.level, need = xpForLevel(lv), pct = Math.min(100, Math.round(D.rpg.xp/need*100));
   var atk = rpgAtk(), hp = rpgMaxHp(), lootB = rpgLootBonus(), dmgR = rpgDmgReduction();
+  var goldB = Math.round((rpgGoldMult() - 1) * 100), xpB = Math.round((rpgXpMult() - 1) * 100);
   var equippedCount = equipList('weapon').length + equipList('accessory').length +
     (D.rpg.equip.armor ? 1 : 0) + (D.rpg.equip.helmet ? 1 : 0) + (D.rpg.equip.boots ? 1 : 0);
   var badgeCount = Array.isArray(D.rpg.badges) ? D.rpg.badges.length : 0;
@@ -1965,7 +1966,11 @@ function renderAdventure(){
       '</div>' +
     '</div>' +
     (SHOW_AVATAR_PICKER ? '<div class="card" style="margin-top:8px">' + avatarPickerHTML() + '</div>' : '') +
-    '<div class="statRow"><span>⚔️ 攻擊 ' + atk + '</span><span>❤️ 生命 ' + hp + '</span><span>🎁 掉寶 +' + lootB + '%</span><span>🛡️ 減傷 ' + dmgR + '%</span></div>' +
+    '<div class="statRow">' +
+      '<span>⚔️ 攻擊 ' + atk + '</span><span>❤️ 生命 ' + hp + '</span>' +
+      '<span>💰 金幣 +' + goldB + '%</span><span>⭐ 經驗 +' + xpB + '%</span>' +
+      '<span>🎁 掉寶 +' + lootB + '%</span><span>🛡️ 減傷 ' + dmgR + '%</span>' +
+    '</div>' +
 
     accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
 
