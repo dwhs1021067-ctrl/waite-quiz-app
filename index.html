@@ -493,6 +493,23 @@ h2.sec:first-child{margin-top:14px}
 .battleTop .clk{font-family:var(--num);font-size:14px;color:var(--tx-2)}
 
 .hpCard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.hpCard.tier-elite{border-color:#B356E0;box-shadow:0 0 0 1px rgba(179,86,224,.25)}
+.hpCard.tier-boss{border-color:#E0A82E;box-shadow:0 0 0 1px rgba(224,168,46,.3),0 0 16px rgba(224,168,46,.18)}
+.tierTag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;margin-left:5px;vertical-align:middle}
+.tierTag.tier-elite{background:rgba(179,86,224,.16);color:#B356E0}
+.tierTag.tier-boss{background:rgba(224,168,46,.18);color:#B5860C}
+.bossGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.bossEntry{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;opacity:.4}
+.bossEntry.beaten{opacity:1;border-color:#E0A82E}
+.bossEntry .bossIcon{font-size:26px;display:block}
+.bossEntry .bossName{font-size:11.5px;font-weight:600;display:block;margin-top:4px;line-height:1.25}
+.bossEntry .bossCount{font-size:10.5px;color:var(--tx-2);display:block;margin-top:2px}
+.bossLogRow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line-2)}
+.bossLogRow:last-child{border-bottom:none}
+.bossLogRow .bossIcon{font-size:20px}
+.bossLogInfo{flex:1;display:flex;flex-direction:column}
+.bossLogName{font-size:13px;font-weight:600}
+.bossLogMeta{font-size:11.5px;color:var(--tx-2)}
 .hpRow{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
 .hpRow.me{margin-top:12px}
 .hpIcon{font-size:20px;image-rendering:pixelated}
@@ -717,7 +734,8 @@ var BANK = [];
 var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto' };
 var DEF_RPG = {
   level:1, xp:0, gold:20, equip:{weapon:null,armor:null,helmet:null,boots:null,accessory:null}, inv:[], enchant:{},
-  avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0
+  avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
+  winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[]
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
 
@@ -1764,6 +1782,8 @@ function doImport(rawText){
     D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
     D.rpg.equip = Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {});
     D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
+    D.rpg.bossKills = Object.assign({}, (obj.rpg && obj.rpg.bossKills) || {});
+    D.rpg.bossLog = (obj.rpg && Array.isArray(obj.rpg.bossLog)) ? obj.rpg.bossLog.slice() : [];
     if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
     D.rpg.badges = (obj.rpg && Array.isArray(obj.rpg.badges)) ? obj.rpg.badges.slice() : [];
     save(); refreshBadge(); checkAchievements(); renderDrill();
@@ -1898,7 +1918,10 @@ function renderAdventure(){
 
     accSection('challenge', '選擇挑戰', due ? due + ' 題待複習' : '',
       '<p class="hint" style="margin:0 0 9px">答對造成傷害、答錯會被反擊；不論輸贏，作答紀錄與複習排程都會照常保存。</p>' +
-      challengeCardsHTML(), true);
+      challengeCardsHTML(), true) +
+
+    accSection('bosslog', '首領圖鑑', Object.keys(D.rpg.bossKills || {}).length + ' / ' + (EXAM_NAMES.length + 1),
+      bossLogHTML());
 
   bindAdventureEvents();
   window.scrollTo(0,0);
@@ -2055,9 +2078,39 @@ function invRowHTML(id){
   '</div>';
 }
 
+function bossLogHTML(){
+  var order = EXAM_NAMES.concat(['review']);
+  var kills = D.rpg.bossKills || {};
+  var grid = order.map(function(key){
+    var bt = BOSS_TITLES[key] || { title:key, icon:'👑' };
+    var count = kills[key] || 0;
+    var beaten = count > 0;
+    return '<div class="bossEntry' + (beaten ? ' beaten' : '') + '">' +
+      '<span class="bossIcon">' + (beaten ? bt.icon : '<span class="dollEmpty">' + bt.icon + '</span>') + '</span>' +
+      '<span class="bossName">' + esc(bt.title) + '</span>' +
+      '<span class="bossCount">' + (beaten ? '擊敗 ' + count + ' 次' : '尚未擊敗') + '</span>' +
+    '</div>';
+  }).join('');
+  var log = (D.rpg.bossLog || []).slice(0, 8);
+  var logHtml = log.length
+    ? '<p class="hint" style="margin:12px 0 6px">最近擊殺紀錄：</p><div class="card">' + log.map(function(e){
+        return '<div class="bossLogRow">' +
+          '<span class="bossIcon">' + e.icon + '</span>' +
+          '<span class="bossLogInfo"><span class="bossLogName">' + esc(e.name) + '</span>' +
+          '<span class="bossLogMeta">' + e.date + '・+' + e.gold + '💰 +' + e.xp + '⭐' +
+          (e.lootName ? '・掉落「' + esc(e.lootName) + '」' : '') + '</span></span>' +
+        '</div>';
+      }).join('') + '</div>'
+    : '';
+  return '<p class="hint" style="margin:0 0 9px">每個考科（含錯題複習池）都有一位專屬首領，擊敗👑首領才會列入紀錄，遭遇機率隨連勝提升。</p>' +
+    '<div class="bossGrid">' + grid + '</div>' + logHtml;
+}
 function challengeCardsHTML(){
   var due = BANK.filter(function(q){ return dueQ(q.id); });
-  var html = '<div class="card chCard" data-battle="review"' + (due.length ? '' : ' style="opacity:.45"') + '>' +
+  var streak = D.rpg.winStreak || 0;
+  var html = '<p class="hint" style="margin:0 0 9px">遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣與掉寶稀有度都更高。' +
+    (streak > 0 ? '目前連勝 <b>' + streak + '</b> 場，遇到精英／首領的機率已提高，且金幣有連勝加成，小心別輸掉！' : '') + '</p>';
+  html += '<div class="card chCard" data-battle="review"' + (due.length ? '' : ' style="opacity:.45"') + '>' +
     '<div class="chIcon">🧟</div><div class="chInfo"><div class="chName">錯題複習池</div>' +
     '<div class="hint">' + (due.length ? due.length + ' 題待複習，適合打怪順便複習' : '目前沒有到期的複習題') + '</div></div>' +
     (due.length ? '<button class="btn tiny">挑戰</button>' : '') + '</div>';
@@ -2193,13 +2246,87 @@ function bindAdventureEvents(){
 }
 
 /* ===================== 冒險：戰鬥 ===================== */
+var MONSTER_TIERS = [
+  { key:'weak',   label:'小怪',   weight:46, hpMult:0.65, atkMult:0.75, goldMult:0.75, xpMult:0.8,  tagIcon:'',   tagClass:'' },
+  { key:'normal', label:'普通怪', weight:34, hpMult:1.0,  atkMult:1.0,  goldMult:1.0,  xpMult:1.0,  tagIcon:'',   tagClass:'' },
+  { key:'elite',  label:'精英怪', weight:15, hpMult:1.6,  atkMult:1.3,  goldMult:1.5,  xpMult:1.4,  tagIcon:'⭐', tagClass:'tier-elite' },
+  { key:'boss',   label:'首領',   weight:5,  hpMult:2.4,  atkMult:1.6,  goldMult:2.2,  xpMult:2.0,  tagIcon:'👑', tagClass:'tier-boss' },
+];
+var BOSS_TITLES = {
+  '國文':                 { title:'文膽巨靈',   icon:'📜' },
+  '綜合法政知識':          { title:'法典守衛者', icon:'⚖️' },
+  '外國文':                { title:'譯語魔王',   icon:'🌐' },
+  '國際公法':              { title:'公法巨像',   icon:'🏛️' },
+  '國際關係與近代外交史':   { title:'史河幽靈',   icon:'🕰️' },
+  '國際經濟':              { title:'匯率魔神',   icon:'💱' },
+  'review':               { title:'遺忘輪迴之影', icon:'🌀' }
+};
+function pickMonsterTier(streak){
+  streak = streak || 0;
+  var bonus = Math.min(30, streak * 3); // 連勝加成：每連勝+3%，最高+30%
+  var tiers = MONSTER_TIERS.map(function(t){ return Object.assign({}, t); });
+  var weak = tiers[0], elite = tiers[2], boss = tiers[3];
+  var take = Math.min(Math.max(0, weak.weight - 5), bonus);
+  weak.weight -= take;
+  elite.weight += take * 0.7;
+  boss.weight += take * 0.3;
+  var total = tiers.reduce(function(s,t){ return s + t.weight; }, 0);
+  var r = Math.random() * total, acc = 0;
+  for (var i = 0; i < tiers.length; i++){
+    acc += tiers[i].weight;
+    if (r < acc) return tiers[i];
+  }
+  return tiers[0];
+}
+var TIER_LOOT_WEIGHTS = {
+  weak:   { none:0.65, common:0.28, rare:0.06, epic:0.01, legendary:0.00 },
+  normal: { none:0.50, common:0.30, rare:0.14, epic:0.05, legendary:0.01 },
+  elite:  { none:0.30, common:0.24, rare:0.28, epic:0.14, legendary:0.04 },
+  boss:   { none:0.05, common:0.10, rare:0.30, epic:0.35, legendary:0.20 },
+};
+function rollLootForTier(tierKey){
+  var w = Object.assign({}, TIER_LOOT_WEIGHTS[tierKey] || TIER_LOOT_WEIGHTS.normal);
+  var bonus = Math.min(0.9, rpgLootBonus() / 100);
+  var shift = Math.min(w.none, bonus * 0.5);
+  w.none -= shift;
+  var rest = w.common + w.rare + w.epic + w.legendary;
+  if (rest > 0 && shift > 0){
+    w.common += shift * (w.common / rest);
+    w.rare += shift * (w.rare / rest);
+    w.epic += shift * (w.epic / rest);
+    w.legendary += shift * (w.legendary / rest);
+  }
+  var order = ['none','common','rare','epic','legendary'], r = Math.random(), acc = 0, rarity = null;
+  for (var i = 0; i < order.length; i++){
+    acc += w[order[i]];
+    if (r < acc){ rarity = order[i]; break; }
+  }
+  if (!rarity || rarity === 'none') return null;
+  var pool = ITEMS.filter(function(i){ return i.rarity === rarity; });
+  if (!pool.length) return null;
+  var unowned = pool.filter(function(i){ return D.rpg.inv.indexOf(i.id) < 0; });
+  var pick = unowned.length ? unowned : pool;
+  return pick[Math.floor(Math.random() * pick.length)];
+}
 function monsterFor(kind, label, n){
-  var hp = Math.max(30, n * 12);
-  var atk = 4 + Math.floor(D.rpg.level/2) + Math.floor(Math.random()*3);
-  var icon = MONSTER_ICONS[Math.floor(Math.random() * MONSTER_ICONS.length)];
-  var name = (kind === 'review' ? '遺忘史萊姆・' : label + '魔像');
-  if (kind === 'review') name = '遺忘史萊姆';
-  return { name:name, icon:icon, hp:hp, maxHp:hp, atk:atk };
+  var tier = pickMonsterTier(D.rpg.winStreak || 0);
+  var baseHp = Math.max(30, n * 12);
+  var hp = Math.max(20, Math.round(baseHp * tier.hpMult));
+  var baseAtk = 4 + Math.floor(D.rpg.level/2) + Math.floor(Math.random()*3);
+  var atk = Math.max(1, Math.round(baseAtk * tier.atkMult));
+  var bossKey = kind === 'review' ? 'review' : label;
+  var icon, name;
+  if (tier.key === 'boss'){
+    var bt = BOSS_TITLES[bossKey] || { title:label + '首領', icon:'👑' };
+    icon = bt.icon; name = bt.title;
+  } else {
+    icon = MONSTER_ICONS[Math.floor(Math.random() * MONSTER_ICONS.length)];
+    name = (kind === 'review' ? '遺忘史萊姆' : label + '魔像');
+    if (tier.key === 'elite') name = tier.label + '・' + name;
+  }
+  return { name:name, icon:icon, hp:hp, maxHp:hp, atk:atk,
+    tier:tier.key, tierLabel:tier.label, tagIcon:tier.tagIcon, tagClass:tier.tagClass,
+    goldMult:tier.goldMult, xpMult:tier.xpMult, bossKey: tier.key === 'boss' ? bossKey : null };
 }
 
 function startBattle(list, kind, label){
@@ -2237,8 +2364,8 @@ function renderBattle(){
       '<span class="mid">' + esc(S.label) + '　第 ' + S.qIndex + ' / ' + S.queue.length + ' 題</span>' +
       '<span class="clk" id="clk">00:00</span>' +
     '</div>' +
-    '<div class="hpCard">' +
-      '<div class="hpRow"><span class="hpIcon">' + m.icon + '</span><span class="hpName">' + esc(m.name) + '</span>' +
+    '<div class="hpCard' + (m.tagClass ? ' ' + m.tagClass : '') + '">' +
+      '<div class="hpRow"><span class="hpIcon">' + m.icon + '</span><span class="hpName">' + esc(m.name) + (m.tagIcon ? ' <span class="tierTag ' + m.tagClass + '">' + m.tagIcon + esc(m.tierLabel) + '</span>' : '') + '</span>' +
         '<span class="hpNum">' + Math.max(0,m.hp) + ' / ' + m.maxHp + '</span></div>' +
       '<div class="hpBar"><i style="width:' + Math.max(0, m.hp/m.maxHp*100) + '%"></i></div>' +
       '<div class="hpRow me"><span class="hpIcon">🧙</span><span class="hpName">你</span>' +
@@ -2317,16 +2444,31 @@ function battleGrade(q){
 function endBattle(result){
   stopClock();
   var m = S.monster, n = S.n, right = S.right, ms = S.ms;
-  var bonusGold, bonusXp, loot = null;
+  var bonusGold, bonusXp, loot = null, streakBonusGold = 0;
   if (result === 'victory'){
-    bonusGold = 15 + Math.round(m.maxHp/3);
-    bonusXp = 10 + Math.round(m.maxHp/4);
-    loot = rollLoot();
+    bonusGold = Math.round((15 + Math.round(m.maxHp/3)) * (m.goldMult || 1));
+    bonusXp = Math.round((10 + Math.round(m.maxHp/4)) * (m.xpMult || 1));
+    loot = rollLootForTier(m.tier);
     D.rpg.wins = (D.rpg.wins || 0) + 1;
+    D.rpg.winStreak = (D.rpg.winStreak || 0) + 1;
+    if (D.rpg.winStreak > (D.rpg.bestWinStreak || 0)) D.rpg.bestWinStreak = D.rpg.winStreak;
+    streakBonusGold = Math.round(bonusGold * Math.min(0.3, (D.rpg.winStreak - 1) * 0.03));
+    bonusGold += streakBonusGold;
+    if (m.tier === 'boss' && m.bossKey){
+      D.rpg.bossKills = D.rpg.bossKills || {};
+      D.rpg.bossKills[m.bossKey] = (D.rpg.bossKills[m.bossKey] || 0) + 1;
+      D.rpg.bossLog = D.rpg.bossLog || [];
+      D.rpg.bossLog.unshift({
+        key:m.bossKey, name:m.name, icon:m.icon, date:today(),
+        gold:bonusGold, xp:bonusXp,
+        lootName: loot ? loot.name : null, lootRarity: loot ? loot.rarity : null
+      });
+      D.rpg.bossLog = D.rpg.bossLog.slice(0, 20);
+    }
   } else if (result === 'draw'){
-    bonusGold = 5; bonusXp = 5;
+    bonusGold = 5; bonusXp = 5; D.rpg.winStreak = 0;
   } else {
-    bonusGold = 2; bonusXp = 3;
+    bonusGold = 2; bonusXp = 3; D.rpg.winStreak = 0;
   }
   D.rpg.gold += bonusGold;
   D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + bonusGold;
@@ -2335,11 +2477,11 @@ function endBattle(result){
   save(); refreshBadge();
   S = null;
   checkAchievements();
-  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled);
+  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold);
 }
 
-function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled){
-  var title = result === 'victory' ? '戰鬥勝利！' : (result === 'draw' ? '怪物逃走了' : '你撤退了');
+function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold){
+  var title = result === 'victory' ? ('擊敗了' + (m.tagIcon ? m.tagIcon + ' ' : '') + '「' + esc(m.name) + '」！') : (result === 'draw' ? '怪物逃走了' : '你撤退了');
   var icon = result === 'victory' ? '🏆' : (result === 'draw' ? '💨' : '🏳️');
   $('#s-adventure').innerHTML =
     '<div class="score">' +
@@ -2347,6 +2489,8 @@ function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, l
       '<div class="c" style="font-size:19px;font-weight:700;margin-top:6px">' + title + '</div>' +
       '<div class="m">本次作答 ' + n + ' 題・答對 ' + right + ' 題・耗時 ' + secs(ms) + '</div>' +
       '<div class="m" style="margin-top:8px">獲得 +' + bonusGold + '💰　+' + bonusXp + '⭐' + (leveled ? '　🎉升級！' : '') + '</div>' +
+      (result === 'victory' && D.rpg.winStreak > 1 ? '<div class="m">🔥 連勝 ' + D.rpg.winStreak + ' 場' + (streakBonusGold ? '（連勝加成 +' + streakBonusGold + '💰）' : '') + '</div>' : '') +
+      (result !== 'victory' ? '<div class="hint" style="margin-top:4px">連勝紀錄已中斷，下次再挑戰吧。</div>' : '') +
       (loot ? '<div class="lootBox rarity-' + loot.rarity + '"><span class="itIcon">' + loot.icon + '</span>掉落「' + esc(loot.name) + '」' + (statText(loot) ? '　' + statText(loot) : '') + '</div>' : '') +
     '</div>' +
     '<button class="btn" id="back">返回冒險</button>';
@@ -2389,12 +2533,14 @@ $('#themeBtn').onclick = cycleTheme;
       D.rpg = Object.assign({}, DEF_RPG, saved.rpg || {});
       D.rpg.equip = Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {});
       D.rpg.enchant = Object.assign({}, (saved.rpg && saved.rpg.enchant) || {});
+      D.rpg.bossKills = Object.assign({}, (saved.rpg && saved.rpg.bossKills) || {});
+      D.rpg.bossLog = (saved.rpg && Array.isArray(saved.rpg.bossLog)) ? saved.rpg.bossLog.slice() : [];
       if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
       D.rpg.badges = (saved.rpg && Array.isArray(saved.rpg.badges)) ? saved.rpg.badges.slice() : [];
     } else {
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll(SEED.slice());
-      D.rpg = Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[] });
+      D.rpg = Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
     }
     D.bank = BANK;
     save();
