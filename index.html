@@ -378,7 +378,16 @@ h2.sec:first-child{margin-top:14px}
 }
 .dollSlot:active{transform:scale(.94)}
 .dollSlot.filled{border-color:var(--brand);background:var(--brand-soft)}
+.dollSlot.filled.rarity-common{border-color:#9AA0A6;background:rgba(154,160,166,.14)}
+.dollSlot.filled.rarity-rare{border-color:#4C8DFF;background:rgba(76,141,255,.14)}
+.dollSlot.filled.rarity-epic{border-color:#B356E0;background:rgba(179,86,224,.14)}
+.dollSlot.filled.rarity-legendary{border-color:#E0A82E;background:rgba(224,168,46,.16)}
+.dollSlot.filled.rarity-mythic{border-color:#E0472E;background:rgba(224,71,46,.16);box-shadow:0 0 10px rgba(224,71,46,.35)}
 .dollSlot.active{border-color:var(--warn);border-width:2.5px}
+.dollTierDot{
+  position:absolute;bottom:-2px;right:-2px;width:13px;height:13px;border-radius:50%;
+  border:2px solid var(--bg);box-shadow:0 0 0 1px rgba(0,0,0,.15);
+}
 .dollEmpty{opacity:.35;filter:grayscale(1)}
 .dollSlot[data-doll="helmet"]{top:0;left:50%;transform:translateX(-50%)}
 .dollSlot[data-doll="weapon1"]{top:72px;left:0}
@@ -2084,15 +2093,17 @@ function dollHTML(){
   var slotBtns = DOLL_SLOTS.map(function(s){
     var id = getEquippedId(s.dataSlot, s.idx), it = itemById(id);
     var filled = !!it, active = ADV_SLOT_OPEN === s.key;
-    return '<button class="dollSlot' + (filled ? ' filled' : '') + (active ? ' active' : '') + '"' +
+    var lv = filled ? enchantLevel(id) : 0;
+    var tierDot = (filled && lv) ? '<span class="dollTierDot" style="background:' + enchantTierFor(lv).color + '" title="' + enchantTierFor(lv).name + '（+' + lv + '）"></span>' : '';
+    return '<button class="dollSlot' + (filled ? ' filled rarity-' + it.rarity : '') + (active ? ' active' : '') + '"' +
       ' data-doll="' + s.key + '" aria-label="' + s.label + '">' +
-      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') +
+      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') + tierDot +
     '</button>';
   }).join('');
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
   var detail = ADV_SLOT_OPEN
     ? slotDetailHTML(ADV_SLOT_OPEN)
-    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件。</p>';
+    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件。邊框顏色代表裝備稀有度，右下角圓點顏色代表強化階段。</p>';
   return body + detail;
 }
 function slotDetailHTML(key){
