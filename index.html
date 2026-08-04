@@ -831,6 +831,22 @@ function miniMonsterFor(){
 }
 var ENCHANT_MAX = 12;
 var BREAKTHROUGH_LEVELS = [4, 8]; // 突破關卡：+4→+5、+8→+9 需消耗2件同部位裝備作為突破素材
+var ENCHANT_TIERS = [
+  { min:0, max:4,  name:'精煉', color:'#9AA0A6' },
+  { min:5, max:8,  name:'淬鍊', color:'#4C8DFF' },
+  { min:9, max:12, name:'神化', color:'#E0472E' },
+];
+function enchantTierFor(lv){
+  for (var i = 0; i < ENCHANT_TIERS.length; i++){
+    if (lv >= ENCHANT_TIERS[i].min && lv <= ENCHANT_TIERS[i].max) return ENCHANT_TIERS[i];
+  }
+  return ENCHANT_TIERS[ENCHANT_TIERS.length - 1];
+}
+function enchBadge(lv){
+  if (!lv) return '';
+  var t = enchantTierFor(lv);
+  return ' <span class="ench" style="color:' + t.color + '">+' + lv + ' ' + t.name + '</span>';
+}
 
 /* ===================== RPG：造型與稱號 ===================== */
 var AVATARS = [
@@ -875,9 +891,9 @@ var ACHIEVEMENTS = [
   { id:'wins20',   name:'討伐英雄', desc:'累計打贏 20 隻怪物',        icon:'🗡️', reward:{gold:80},  check:function(c){ return c.wins >= 20; } },
   { id:'allStar',  name:'全科啟蒙', desc:'六大考科皆達到至少 1 星屬性', icon:'🌟', reward:{gold:60},  check:function(c){ return c.allStar; } },
   { id:'fiveStar', name:'學貫一科', desc:'任一考科屬性達到滿 5 星',   icon:'💫', reward:{gold:100}, check:function(c){ return c.maxStar >= 5; } },
-  { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備強化到 +5',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
-  { id:'breakEnchant',name:'突破極限',desc:'任一裝備突破強化到 +9', icon:'⚡', reward:{gold:150}, check:function(c){ return c.maxEnchant >= 9; } },
-  { id:'fullEnchant',name:'鍛造宗師',desc:'任一裝備強化到 +12 滿級', icon:'🌟', reward:{gold:250}, check:function(c){ return c.maxEnchant >= 12; } },
+  { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備突破至【淬鍊】階段（+5）',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
+  { id:'breakEnchant',name:'突破極限',desc:'任一裝備突破至【神化】階段（+9）', icon:'⚡', reward:{gold:150}, check:function(c){ return c.maxEnchant >= 9; } },
+  { id:'fullEnchant',name:'鍛造宗師',desc:'任一裝備強化至【神化】滿級（+12）', icon:'🌟', reward:{gold:250}, check:function(c){ return c.maxEnchant >= 12; } },
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
   { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
   { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
@@ -2093,9 +2109,10 @@ function slotDetailHTML(key){
       actionsHtml = '<span class="owned">已滿級</span>';
     } else if (needsBreak){
       var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
-      noteHtml = '<div class="breakNote">🔒 +' + lv + ' 已達突破關卡，需消耗 <b>2件</b> 同部位裝備作為突破素材才能繼續強化' +
+      var curTier = enchantTierFor(lv), nextTier = enchantTierFor(lv + 1);
+      noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>2件</b> 同部位裝備作為突破素材，才能突破至【' + nextTier.name + '】階段' +
         (mats.length < 2 ? '（目前只有 ' + mats.length + ' 件可用素材）' : '') + '</div>';
-      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 突破 💰' + cost + '（需2件素材）</button>';
+      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 突破至【' + nextTier.name + '】💰' + cost + '</button>';
     } else {
       actionsHtml = '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>' +
         (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '');
@@ -2103,7 +2120,7 @@ function slotDetailHTML(key){
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
         '<span class="itIcon">' + it.icon + '</span>' +
-        '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+        '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
         '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
         '<button class="btn sec tiny" data-doll-unequip="' + key + '">卸下</button>' +
       '</div>' +
@@ -2119,7 +2136,7 @@ function slotDetailHTML(key){
         var i = itemById(iid), l = enchantLevel(iid);
         return '<div class="itRow rarity-' + i.rarity + '">' +
           '<span class="itIcon">' + i.icon + '</span>' +
-          '<span class="itInfo"><span class="itName">' + esc(i.name) + (l ? ' <span class="ench">+' + l + '</span>' : '') + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+          '<span class="itInfo"><span class="itName">' + esc(i.name) + enchBadge(l) + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
           '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
           '<button class="btn tiny sec" data-equip-to="' + key + '|' + iid + '">裝備</button>' +
         '</div>';
@@ -2161,7 +2178,7 @@ function invRowHTML(id){
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
     '<div class="itTop">' +
       '<span class="itIcon">' + it.icon + '</span>' +
-      '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+      '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
       '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
       '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
     '</div>' +
@@ -2371,6 +2388,10 @@ function bindAdventureEvents(){
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
       save(); checkAchievements(); renderAdventureKeepScroll();
+      var newTier = enchantTierFor(lv + 1);
+      setTimeout(function(){
+        alert('⚡ 突破成功！\n「' + it.name + '」躍升至【' + newTier.name + '】階段（+' + (lv + 1) + '）！');
+      }, 50);
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-avatar]'), function(b){
