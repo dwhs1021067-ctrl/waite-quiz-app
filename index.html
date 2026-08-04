@@ -362,7 +362,7 @@ h2.sec:first-child{margin-top:14px}
 .statRow{display:flex;gap:14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
 
 .dollWrap{
-  position:relative;width:100%;max-width:260px;height:220px;margin:6px auto 10px;
+  position:relative;width:100%;max-width:280px;height:260px;margin:6px auto 10px;
 }
 .dollBody{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -370,9 +370,9 @@ h2.sec:first-child{margin-top:14px}
   image-rendering:pixelated;
 }
 .dollSlot{
-  position:absolute;width:50px;height:50px;border-radius:14px;
+  position:absolute;width:46px;height:46px;border-radius:13px;
   background:var(--card);border:2px solid var(--line);
-  display:flex;align-items:center;justify-content:center;font-size:23px;
+  display:flex;align-items:center;justify-content:center;font-size:21px;
   cursor:pointer;transition:border-color .15s,transform .15s;
   box-shadow:0 2px 6px rgba(0,0,0,.08);
 }
@@ -381,9 +381,11 @@ h2.sec:first-child{margin-top:14px}
 .dollSlot.active{border-color:var(--warn);border-width:2.5px}
 .dollEmpty{opacity:.35;filter:grayscale(1)}
 .dollSlot[data-doll="helmet"]{top:0;left:50%;transform:translateX(-50%)}
-.dollSlot[data-doll="weapon"]{top:78px;left:6px}
-.dollSlot[data-doll="armor"]{top:78px;left:50%;transform:translateX(-50%)}
-.dollSlot[data-doll="accessory"]{top:78px;right:6px}
+.dollSlot[data-doll="weapon1"]{top:72px;left:0}
+.dollSlot[data-doll="weapon2"]{top:126px;left:0}
+.dollSlot[data-doll="armor"]{top:99px;left:50%;transform:translateX(-50%)}
+.dollSlot[data-doll="accessory1"]{top:72px;right:0}
+.dollSlot[data-doll="accessory2"]{top:126px;right:0}
 .dollSlot[data-doll="boots"]{bottom:0;left:50%;transform:translateX(-50%)}
 .dollDetail{margin-top:2px}
 .dollDetail .itRow2{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;margin-bottom:9px}
@@ -743,11 +745,25 @@ var SEED = [
 var BANK = [];
 var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto' };
 var DEF_RPG = {
-  level:1, xp:0, gold:20, equip:{weapon:null,armor:null,helmet:null,boots:null,accessory:null}, inv:[], enchant:{},
+  level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
   winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[]
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
+function migrateEquip(eq){
+  eq = eq || {};
+  function toArr(v){
+    if (Array.isArray(v)) return v.filter(Boolean).slice(0, 2);
+    return v ? [v] : [];
+  }
+  return {
+    weapon: toArr(eq.weapon),
+    armor: eq.armor || null,
+    helmet: eq.helmet || null,
+    boots: eq.boots || null,
+    accessory: toArr(eq.accessory)
+  };
+}
 
 /* ===================== RPG：裝備目錄 ===================== */
 var ITEMS = [
@@ -975,9 +991,23 @@ function itemStatValue(it, id, key){
   var lv = enchantLevel(id);
   return Math.round(base * (1 + lv*0.12));
 }
+function equipList(dataSlot){
+  var v = D.rpg.equip[dataSlot];
+  if (Array.isArray(v)) return v.filter(Boolean);
+  return v ? [v] : [];
+}
+function isEquipped(id){
+  var eq = D.rpg.equip;
+  if (eq.armor === id || eq.helmet === id || eq.boots === id) return true;
+  if (Array.isArray(eq.weapon) && eq.weapon.indexOf(id) >= 0) return true;
+  if (Array.isArray(eq.accessory) && eq.accessory.indexOf(id) >= 0) return true;
+  return false;
+}
 function rpgAtk(){
-  var base = 8 + D.rpg.level*2, wid = D.rpg.equip.weapon, w = itemById(wid);
-  var eq = w ? itemStatValue(w, wid, 'atk') : 0;
+  var base = 8 + D.rpg.level*2;
+  var eq = equipList('weapon').reduce(function(sum, wid){
+    var w = itemById(wid); return sum + (w ? itemStatValue(w, wid, 'atk') : 0);
+  }, 0);
   return base + eq + subjectBonusTotal('atk');
 }
 function rpgMaxHp(){
@@ -986,13 +1016,15 @@ function rpgMaxHp(){
   return base + eq + subjectBonusTotal('hp');
 }
 function rpgGoldMult(){
-  var cid = D.rpg.equip.accessory, c = itemById(cid);
-  var eq = c ? itemStatValue(c, cid, 'goldPct') : 0;
+  var eq = equipList('accessory').reduce(function(sum, cid){
+    var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'goldPct') : 0);
+  }, 0);
   return 1 + (eq + subjectBonusTotal('goldPct'))/100;
 }
 function rpgXpMult(){
-  var cid = D.rpg.equip.accessory, c = itemById(cid);
-  var eq = c ? itemStatValue(c, cid, 'xpPct') : 0;
+  var eq = equipList('accessory').reduce(function(sum, cid){
+    var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'xpPct') : 0);
+  }, 0);
   return 1 + (eq + subjectBonusTotal('xpPct'))/100;
 }
 function rpgLootBonus(){
@@ -1805,7 +1837,7 @@ function doImport(rawText){
     BANK = normalizeAll(obj.bank); D.bank = BANK;
     D.progress = obj.progress || {}; D.days = obj.days || [];
     D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
-    D.rpg.equip = Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {});
+    D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {}));
     D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
     D.rpg.bossKills = Object.assign({}, (obj.rpg && obj.rpg.bossKills) || {});
     D.rpg.bossLog = (obj.rpg && Array.isArray(obj.rpg.bossLog)) ? obj.rpg.bossLog.slice() : [];
@@ -1900,9 +1932,8 @@ function renderAdventure(){
 
   var lv = D.rpg.level, need = xpForLevel(lv), pct = Math.min(100, Math.round(D.rpg.xp/need*100));
   var atk = rpgAtk(), hp = rpgMaxHp(), lootB = rpgLootBonus(), dmgR = rpgDmgReduction();
-  var wp = itemById(D.rpg.equip.weapon), ar = itemById(D.rpg.equip.armor),
-      hl = itemById(D.rpg.equip.helmet), bt = itemById(D.rpg.equip.boots), ac = itemById(D.rpg.equip.accessory);
-  var equippedCount = [wp,ar,hl,bt,ac].filter(Boolean).length;
+  var equippedCount = equipList('weapon').length + equipList('accessory').length +
+    (D.rpg.equip.armor ? 1 : 0) + (D.rpg.equip.helmet ? 1 : 0) + (D.rpg.equip.boots ? 1 : 0);
   var badgeCount = Array.isArray(D.rpg.badges) ? D.rpg.badges.length : 0;
   var due = BANK.filter(function(q){ return dueQ(q.id); }).length;
 
@@ -1926,7 +1957,7 @@ function renderAdventure(){
       '<p class="hint" style="margin:0 0 9px">科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。</p>' +
       '<div class="card">' + subjectAttrHTML() + '</div>') +
 
-    accSection('equip', '裝備欄', equippedCount + ' / 5', dollHTML(), true) +
+    accSection('equip', '裝備欄', equippedCount + ' / 7', dollHTML(), true) +
 
     accSection('shop', '商店', '',
       '<p class="hint" style="margin:0 0 9px">稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。</p>' +
@@ -2001,15 +2032,36 @@ function achievementsHTML(){
 }
 
 var DOLL_SLOTS = [
-  { key:'helmet',    label:'頭盔', icon:'🪖' },
-  { key:'weapon',    label:'武器', icon:'🗡️' },
-  { key:'armor',     label:'防具', icon:'🛡️' },
-  { key:'accessory', label:'飾品', icon:'💍' },
-  { key:'boots',     label:'鞋子', icon:'👢' },
+  { key:'helmet',     dataSlot:'helmet',    idx:null, label:'頭盔',   icon:'🪖' },
+  { key:'weapon1',    dataSlot:'weapon',    idx:0,    label:'武器一', icon:'🗡️' },
+  { key:'weapon2',    dataSlot:'weapon',    idx:1,    label:'武器二', icon:'🗡️' },
+  { key:'armor',      dataSlot:'armor',     idx:null, label:'防具',   icon:'🛡️' },
+  { key:'accessory1', dataSlot:'accessory', idx:0,    label:'飾品一', icon:'💍' },
+  { key:'accessory2', dataSlot:'accessory', idx:1,    label:'飾品二', icon:'💍' },
+  { key:'boots',      dataSlot:'boots',     idx:null, label:'鞋子',   icon:'👢' },
 ];
+function dollSlotByKey(key){
+  var found = null;
+  DOLL_SLOTS.forEach(function(s){ if (s.key === key) found = s; });
+  return found;
+}
+function getEquippedId(dataSlot, idx){
+  var v = D.rpg.equip[dataSlot];
+  if (idx == null) return v || null;
+  return (Array.isArray(v) && v[idx]) ? v[idx] : null;
+}
+function setEquippedId(dataSlot, idx, id){
+  if (idx == null){ D.rpg.equip[dataSlot] = id; return; }
+  if (!Array.isArray(D.rpg.equip[dataSlot])) D.rpg.equip[dataSlot] = [];
+  D.rpg.equip[dataSlot][idx] = id;
+}
+function clearEquippedId(dataSlot, idx){
+  if (idx == null){ D.rpg.equip[dataSlot] = null; return; }
+  if (Array.isArray(D.rpg.equip[dataSlot])) D.rpg.equip[dataSlot][idx] = null;
+}
 function dollHTML(){
   var slotBtns = DOLL_SLOTS.map(function(s){
-    var id = D.rpg.equip[s.key], it = itemById(id);
+    var id = getEquippedId(s.dataSlot, s.idx), it = itemById(id);
     var filled = !!it, active = ADV_SLOT_OPEN === s.key;
     return '<button class="dollSlot' + (filled ? ' filled' : '') + (active ? ' active' : '') + '"' +
       ' data-doll="' + s.key + '" aria-label="' + s.label + '">' +
@@ -2019,17 +2071,22 @@ function dollHTML(){
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
   var detail = ADV_SLOT_OPEN
     ? slotDetailHTML(ADV_SLOT_OPEN)
-    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。</p>';
+    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件。</p>';
   return body + detail;
 }
-function slotDetailHTML(slot){
-  var labelMap = {helmet:'頭盔', weapon:'武器', armor:'防具', boots:'鞋子', accessory:'飾品'};
-  var id = D.rpg.equip[slot], it = itemById(id);
-  var owned = D.rpg.inv.filter(function(iid){ var i = itemById(iid); return i && i.slot === slot && iid !== id; });
+function slotDetailHTML(key){
+  var s = dollSlotByKey(key);
+  if (!s) return '';
+  var dataSlot = s.dataSlot, idx = s.idx;
+  var id = getEquippedId(dataSlot, idx), it = itemById(id);
+  var owned = D.rpg.inv.filter(function(iid){
+    var i = itemById(iid);
+    return i && i.slot === dataSlot && !isEquipped(iid);
+  });
   var html = '<div class="dollDetail">';
   if (it){
     var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
-    var mats = materialsFor(slot, id), fuseCost = Math.round(cost / 2);
+    var mats = materialsFor(dataSlot, id), fuseCost = Math.round(cost / 2);
     var needsBreak = BREAKTHROUGH_LEVELS.indexOf(lv) >= 0;
     var noteHtml = '', actionsHtml;
     if (maxed){
@@ -2048,23 +2105,23 @@ function slotDetailHTML(slot){
         '<span class="itIcon">' + it.icon + '</span>' +
         '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
         '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
-        '<button class="btn sec tiny" data-doll-unequip="' + slot + '">卸下</button>' +
+        '<button class="btn sec tiny" data-doll-unequip="' + key + '">卸下</button>' +
       '</div>' +
       noteHtml +
       '<div class="itSub">' + actionsHtml + '</div>' +
     '</div>';
   } else {
-    html += '<p class="hint" style="margin:0 0 9px">' + labelMap[slot] + '尚未裝備任何物品。</p>';
+    html += '<p class="hint" style="margin:0 0 9px">' + s.label + '尚未裝備任何物品。</p>';
   }
   if (owned.length){
-    html += '<p class="hint" style="margin:2px 0 6px">更換' + labelMap[slot] + '：</p><div class="card">' +
+    html += '<p class="hint" style="margin:2px 0 6px">更換' + s.label + '：</p><div class="card">' +
       owned.map(function(iid){
         var i = itemById(iid), l = enchantLevel(iid);
         return '<div class="itRow rarity-' + i.rarity + '">' +
           '<span class="itIcon">' + i.icon + '</span>' +
           '<span class="itInfo"><span class="itName">' + esc(i.name) + (l ? ' <span class="ench">+' + l + '</span>' : '') + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
           '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
-          '<button class="btn tiny sec" data-equip="' + iid + '">裝備</button>' +
+          '<button class="btn tiny sec" data-equip-to="' + key + '|' + iid + '">裝備</button>' +
         '</div>';
       }).join('') +
     '</div>';
@@ -2093,12 +2150,12 @@ function materialsFor(slot, excludeId){
   return D.rpg.inv.filter(function(iid){
     if (iid === excludeId) return false;
     var it = itemById(iid);
-    return it && it.slot === slot && !it.noSell;
+    return it && it.slot === slot && !it.noSell && !isEquipped(iid);
   }).sort(function(a,b){ return RARITY_ORDER[itemById(a).rarity] - RARITY_ORDER[itemById(b).rarity]; });
 }
 function invRowHTML(id){
   var it = itemById(id); if (!it) return '';
-  var equipped = D.rpg.equip[it.slot] === id;
+  var equipped = isEquipped(id);
   var lv = enchantLevel(id);
   var sv = sellValue(it);
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
@@ -2194,7 +2251,25 @@ function bindAdventureEvents(){
     b.onclick = function(){
       var id = b.dataset.equip, it = itemById(id);
       if (!it) return;
-      D.rpg.equip[it.slot] = id; save(); renderAdventureKeepScroll();
+      if (it.slot === 'weapon' || it.slot === 'accessory'){
+        var arr = D.rpg.equip[it.slot];
+        if (!Array.isArray(arr)) arr = D.rpg.equip[it.slot] = [];
+        if (!arr[0]) arr[0] = id;
+        else if (!arr[1]) arr[1] = id;
+        else arr[0] = id; // 兩格都滿時，預設替換第一格
+      } else {
+        D.rpg.equip[it.slot] = id;
+      }
+      save(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-equip-to]'), function(b){
+    b.onclick = function(){
+      var parts = b.dataset.equipTo.split('|'), key = parts[0], id = parts[1];
+      var s = dollSlotByKey(key), it = itemById(id);
+      if (!s || !it) return;
+      setEquippedId(s.dataSlot, s.idx, id);
+      save(); renderAdventureKeepScroll();
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-unequip]'), function(b){
@@ -2208,7 +2283,12 @@ function bindAdventureEvents(){
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-doll-unequip]'), function(b){
-    b.onclick = function(){ D.rpg.equip[b.dataset.dollUnequip] = null; save(); renderAdventureKeepScroll(); };
+    b.onclick = function(){
+      var s = dollSlotByKey(b.dataset.dollUnequip);
+      if (!s) return;
+      clearEquippedId(s.dataSlot, s.idx);
+      save(); renderAdventureKeepScroll();
+    };
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-enchant]'), function(b){
     b.onclick = function(){
@@ -2234,7 +2314,11 @@ function bindAdventureEvents(){
       var msg = '確定要分解「' + it.name + (lv ? ' +' + lv : '') + '」嗎？' +
         (lv ? '強化等級將一併消失，' : '') + '可換回 ' + sv + ' 金幣。';
       if (!confirm(msg)) return;
-      Object.keys(D.rpg.equip).forEach(function(slot){ if (D.rpg.equip[slot] === id) D.rpg.equip[slot] = null; });
+      Object.keys(D.rpg.equip).forEach(function(slot){
+        var v = D.rpg.equip[slot];
+        if (Array.isArray(v)){ var idx2 = v.indexOf(id); if (idx2 >= 0) v[idx2] = null; }
+        else if (v === id) D.rpg.equip[slot] = null;
+      });
       var idx = D.rpg.inv.indexOf(id);
       if (idx >= 0) D.rpg.inv.splice(idx, 1);
       if (D.rpg.enchant && D.rpg.enchant[id] != null) delete D.rpg.enchant[id];
@@ -2603,7 +2687,7 @@ $('#themeBtn').onclick = cycleTheme;
       D.settings.subjects = uniq(D.settings.subjects.map(function(s){
         return LEGACY[s] ? LEGACY[s][0] : s; })).filter(function(s){ return EXAM_NAMES.indexOf(s) >= 0; });
       D.rpg = Object.assign({}, DEF_RPG, saved.rpg || {});
-      D.rpg.equip = Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {});
+      D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {}));
       D.rpg.enchant = Object.assign({}, (saved.rpg && saved.rpg.enchant) || {});
       D.rpg.bossKills = Object.assign({}, (saved.rpg && saved.rpg.bossKills) || {});
       D.rpg.bossLog = (saved.rpg && Array.isArray(saved.rpg.bossLog)) ? saved.rpg.bossLog.slice() : [];
@@ -2612,7 +2696,7 @@ $('#themeBtn').onclick = cycleTheme;
     } else {
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll(SEED.slice());
-      D.rpg = Object.assign({}, DEF_RPG, { equip: Object.assign({}, DEF_RPG.equip), enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
+      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
     }
     D.bank = BANK;
     save();
