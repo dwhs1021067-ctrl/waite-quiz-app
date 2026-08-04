@@ -391,6 +391,7 @@ h2.sec:first-child{margin-top:14px}
 .dollDetail .itRow2.rarity-rare{border-left-color:#4C8DFF}
 .dollDetail .itRow2.rarity-epic{border-left-color:#B356E0}
 .dollDetail .itRow2.rarity-legendary{border-left-color:#E0A82E}
+.dollDetail .itRow2.rarity-mythic{border-left-color:#E0472E}
 .dollDetail .card .itRow:first-child{border-radius:var(--r) var(--r) 0 0}
 .dollDetail .card .itRow:last-child{border-radius:0 0 var(--r) var(--r)}
 
@@ -455,14 +456,20 @@ h2.sec:first-child{margin-top:14px}
 .itStat{font-size:12px;color:var(--tx-2)}
 .itActions{display:flex;gap:8px;flex:none;margin-left:auto}
 .owned{font-size:12px;color:var(--tx-3);flex:none}
+.breakNote{font-size:12.5px;color:var(--warn);line-height:1.5;margin-top:9px}
+.btn.break{background:linear-gradient(135deg,#E0A82E,#B5860C);color:#fff;border:none}
+.btn.break:disabled{background:var(--line-2);color:var(--tx-3)}
 .rarity-common{border-left-color:#9AA0A6}
 .rarity-rare{border-left-color:#4C8DFF}
 .rarity-epic{border-left-color:#B356E0}
 .rarity-legendary{border-left-color:#E0A82E}
+.rarity-mythic{border-left-color:#E0472E;box-shadow:0 0 0 1px rgba(224,71,46,.15)}
 .rarity-common .itIcon{background:rgba(154,160,166,.16)}
 .rarity-rare .itIcon{background:rgba(76,141,255,.16)}
 .rarity-epic .itIcon{background:rgba(179,86,224,.16)}
 .rarity-legendary .itIcon{background:rgba(224,168,46,.18)}
+.rarity-mythic .itIcon{background:linear-gradient(135deg,rgba(224,71,46,.22),rgba(224,168,46,.22))}
+.mythTag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:7px;margin-left:4px;vertical-align:middle;background:rgba(224,71,46,.14);color:#E0472E}
 
 .chCard{
   display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;
@@ -504,6 +511,8 @@ h2.sec:first-child{margin-top:14px}
 .bossEntry .bossIcon{font-size:26px;display:block}
 .bossEntry .bossName{font-size:11.5px;font-weight:600;display:block;margin-top:4px;line-height:1.25}
 .bossEntry .bossCount{font-size:10.5px;color:var(--tx-2);display:block;margin-top:2px}
+.bossEntry .bossExclusive{font-size:10px;display:block;margin-top:4px;color:var(--tx-3);line-height:1.3}
+.bossEntry .bossExclusive.got{color:#E0472E;font-weight:700}
 .bossLogRow{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line-2)}
 .bossLogRow:last-child{border-bottom:none}
 .bossLogRow .bossIcon{font-size:20px}
@@ -528,6 +537,7 @@ h2.sec:first-child{margin-top:14px}
   margin-top:14px;padding:12px;border-radius:10px;border:2px dashed var(--line);
   display:flex;align-items:center;gap:10px;justify-content:center;font-size:14px;font-weight:600;
 }
+.lootBox.rarity-mythic{border:2px solid #E0472E;box-shadow:0 0 16px rgba(224,71,46,.25)}
 
 /* ---- 題庫 ---- */
 textarea{
@@ -785,6 +795,14 @@ var ITEMS = [
   { id:'b8', slot:'boots', name:'防滑拖',   rarity:'rare',      dmgReduction:24, cost:125, icon:'🩴' },
   { id:'b4', slot:'boots', name:'疾風輪靴', rarity:'epic',      dmgReduction:32, icon:'🛼', dropOnly:true },
   { id:'b5', slot:'boots', name:'旋風之靴', rarity:'legendary', dmgReduction:45, icon:'🌪️', dropOnly:true },
+
+  { id:'m-ch',  slot:'weapon',    name:'青玉判官筆',   rarity:'mythic', atk:26,                   icon:'🖌️', dropOnly:true, bossExclusive:'國文',                 noSell:true },
+  { id:'m-fa',  slot:'armor',     name:'憲鼎聖鎧',     rarity:'mythic', hp:130,                   icon:'⚖️', dropOnly:true, bossExclusive:'綜合法政知識',           noSell:true },
+  { id:'m-fe',  slot:'accessory',name:'萬國譯者環',   rarity:'mythic', goldPct:30, xpPct:35,      icon:'🌐', dropOnly:true, bossExclusive:'外國文',               noSell:true },
+  { id:'m-gl',  slot:'helmet',   name:'萬邦律法冠',   rarity:'mythic', lootPct:60,               icon:'🏛️', dropOnly:true, bossExclusive:'國際公法',             noSell:true },
+  { id:'m-ir',  slot:'boots',    name:'史河遁行靴',   rarity:'mythic', dmgReduction:55,          icon:'🕰️', dropOnly:true, bossExclusive:'國際關係與近代外交史',  noSell:true },
+  { id:'m-ie',  slot:'weapon',   name:'黃金匯率權杖', rarity:'mythic', atk:28,                   icon:'💱', dropOnly:true, bossExclusive:'國際經濟',             noSell:true },
+  { id:'m-rv',  slot:'accessory',name:'輪迴之戒',     rarity:'mythic', goldPct:35, xpPct:40,      icon:'🌀', dropOnly:true, bossExclusive:'review',              noSell:true },
 ];
 var MONSTER_ICONS = ['👹','👺','🧟','🐲','🦂','🕷️','👻','🐺','🦖','🧌'];
 var MINI_MONSTER_NAMES = ['迷惑史萊姆','搗蛋哥布林','嘮叨烏鴉','健忘幽靈','小石魔','調皮蝙蝠',
@@ -795,7 +813,8 @@ function miniMonsterFor(){
     name: MINI_MONSTER_NAMES[Math.floor(Math.random()*MINI_MONSTER_NAMES.length)]
   };
 }
-var ENCHANT_MAX = 5;
+var ENCHANT_MAX = 12;
+var BREAKTHROUGH_LEVELS = [4, 8]; // 突破關卡：+4→+5、+8→+9 需消耗2件同部位裝備作為突破素材
 
 /* ===================== RPG：造型與稱號 ===================== */
 var AVATARS = [
@@ -840,8 +859,12 @@ var ACHIEVEMENTS = [
   { id:'wins20',   name:'討伐英雄', desc:'累計打贏 20 隻怪物',        icon:'🗡️', reward:{gold:80},  check:function(c){ return c.wins >= 20; } },
   { id:'allStar',  name:'全科啟蒙', desc:'六大考科皆達到至少 1 星屬性', icon:'🌟', reward:{gold:60},  check:function(c){ return c.allStar; } },
   { id:'fiveStar', name:'學貫一科', desc:'任一考科屬性達到滿 5 星',   icon:'💫', reward:{gold:100}, check:function(c){ return c.maxStar >= 5; } },
-  { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備強化到 +5 滿級',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
+  { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備強化到 +5',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
+  { id:'breakEnchant',name:'突破極限',desc:'任一裝備突破強化到 +9', icon:'⚡', reward:{gold:150}, check:function(c){ return c.maxEnchant >= 9; } },
+  { id:'fullEnchant',name:'鍛造宗師',desc:'任一裝備強化到 +12 滿級', icon:'🌟', reward:{gold:250}, check:function(c){ return c.maxEnchant >= 12; } },
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
+  { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
+  { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
   { id:'gold500',  name:'白手起家', desc:'累計賺取 500 金幣',         icon:'💰', reward:{gold:0},   check:function(c){ return c.lifetimeGold >= 500; } },
 ];
 function computeTotalCorrect(){
@@ -862,6 +885,8 @@ function achievementContext(){
     allStar: Object.keys(SUBJECT_ATTR).every(function(n){ return subjectMastery(n).stars >= 1; }),
     maxEnchant: enchLv.length ? Math.max.apply(null, enchLv) : 0,
     hasLegendary: D.rpg.inv.some(function(id){ var it = itemById(id); return it && it.rarity === 'legendary'; }),
+    mythicCount: D.rpg.inv.filter(function(id){ var it = itemById(id); return it && it.rarity === 'mythic'; }).length,
+    mythicTotal: ITEMS.filter(function(i){ return i.rarity === 'mythic'; }).length,
   };
 }
 function checkAchievements(){
@@ -941,14 +966,14 @@ function itemById(id){ return ITEMS.filter(function(i){ return i.id === id; })[0
 function enchantLevel(id){ return (D.rpg.enchant && D.rpg.enchant[id]) || 0; }
 function enchantCost(it, id){
   var lv = enchantLevel(id);
-  var rarityMult = { common:1, rare:1.6, epic:2.4, legendary:3.5 }[it.rarity] || 1;
+  var rarityMult = { common:1, rare:1.6, epic:2.4, legendary:3.5, mythic:5.5 }[it.rarity] || 1;
   return Math.round((25 + lv*20) * rarityMult);
 }
 function itemStatValue(it, id, key){
   var base = it[key];
   if (!base) return 0;
   var lv = enchantLevel(id);
-  return Math.round(base * (1 + lv*0.15));
+  return Math.round(base * (1 + lv*0.12));
 }
 function rpgAtk(){
   var base = 8 + D.rpg.level*2, wid = D.rpg.equip.weapon, w = itemById(wid);
@@ -989,7 +1014,7 @@ function rpgAward(ok, unsure){
   var leveled = addXp(x);
   return { gold:g, xp:x, leveled:leveled };
 }
-var SELL_VALUE = { common:8, rare:30, epic:70, legendary:150 };
+var SELL_VALUE = { common:8, rare:30, epic:70, legendary:150, mythic:400 };
 function sellValue(it){ return SELL_VALUE[it.rarity] || 5; }
 
 function statText(it){
@@ -2005,17 +2030,28 @@ function slotDetailHTML(slot){
   if (it){
     var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
     var mats = materialsFor(slot, id), fuseCost = Math.round(cost / 2);
+    var needsBreak = BREAKTHROUGH_LEVELS.indexOf(lv) >= 0;
+    var noteHtml = '', actionsHtml;
+    if (maxed){
+      actionsHtml = '<span class="owned">已滿級</span>';
+    } else if (needsBreak){
+      var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
+      noteHtml = '<div class="breakNote">🔒 +' + lv + ' 已達突破關卡，需消耗 <b>2件</b> 同部位裝備作為突破素材才能繼續強化' +
+        (mats.length < 2 ? '（目前只有 ' + mats.length + ' 件可用素材）' : '') + '</div>';
+      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 突破 💰' + cost + '（需2件素材）</button>';
+    } else {
+      actionsHtml = '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>' +
+        (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '');
+    }
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
         '<span class="itIcon">' + it.icon + '</span>' +
-        '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + '</span>' +
+        '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
         '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
         '<button class="btn sec tiny" data-doll-unequip="' + slot + '">卸下</button>' +
       '</div>' +
-      '<div class="itSub">' +
-        (maxed ? '<span class="owned">已滿級</span>' : '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>') +
-        (mats.length && !maxed ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '') +
-      '</div>' +
+      noteHtml +
+      '<div class="itSub">' + actionsHtml + '</div>' +
     '</div>';
   } else {
     html += '<p class="hint" style="margin:0 0 9px">' + labelMap[slot] + '尚未裝備任何物品。</p>';
@@ -2026,7 +2062,7 @@ function slotDetailHTML(slot){
         var i = itemById(iid), l = enchantLevel(iid);
         return '<div class="itRow rarity-' + i.rarity + '">' +
           '<span class="itIcon">' + i.icon + '</span>' +
-          '<span class="itInfo"><span class="itName">' + esc(i.name) + (l ? ' <span class="ench">+' + l + '</span>' : '') + '</span>' +
+          '<span class="itInfo"><span class="itName">' + esc(i.name) + (l ? ' <span class="ench">+' + l + '</span>' : '') + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
           '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
           '<button class="btn tiny sec" data-equip="' + iid + '">裝備</button>' +
         '</div>';
@@ -2052,12 +2088,12 @@ function shopSlotHTML(slot, label, icon){
     '<div class="card">' + list.map(shopRowHTML).join('') + '</div>');
 }
 
-var RARITY_ORDER = { common:0, rare:1, epic:2, legendary:3 };
+var RARITY_ORDER = { common:0, rare:1, epic:2, legendary:3, mythic:4 };
 function materialsFor(slot, excludeId){
   return D.rpg.inv.filter(function(iid){
     if (iid === excludeId) return false;
     var it = itemById(iid);
-    return it && it.slot === slot;
+    return it && it.slot === slot && !it.noSell;
   }).sort(function(a,b){ return RARITY_ORDER[itemById(a).rarity] - RARITY_ORDER[itemById(b).rarity]; });
 }
 function invRowHTML(id){
@@ -2068,12 +2104,12 @@ function invRowHTML(id){
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
     '<div class="itTop">' +
       '<span class="itIcon">' + it.icon + '</span>' +
-      '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + '</span>' +
+      '<span class="itInfo"><span class="itName">' + esc(it.name) + (lv ? ' <span class="ench">+' + lv + '</span>' : '') + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
       '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
       '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
     '</div>' +
     '<div class="itSub">' +
-      '<button class="btn tiny sec warn" data-sell="' + id + '">分解 +' + sv + '💰</button>' +
+      (it.noSell ? '<span class="owned">首領專屬裝備無法分解</span>' : '<button class="btn tiny sec warn" data-sell="' + id + '">分解 +' + sv + '💰</button>') +
     '</div>' +
   '</div>';
 }
@@ -2085,10 +2121,17 @@ function bossLogHTML(){
     var bt = BOSS_TITLES[key] || { title:key, icon:'👑' };
     var count = kills[key] || 0;
     var beaten = count > 0;
+    var exclusive = ITEMS.filter(function(i){ return i.bossExclusive === key; })[0];
+    var hasExclusive = exclusive && D.rpg.inv.indexOf(exclusive.id) >= 0;
     return '<div class="bossEntry' + (beaten ? ' beaten' : '') + '">' +
       '<span class="bossIcon">' + (beaten ? bt.icon : '<span class="dollEmpty">' + bt.icon + '</span>') + '</span>' +
       '<span class="bossName">' + esc(bt.title) + '</span>' +
       '<span class="bossCount">' + (beaten ? '擊敗 ' + count + ' 次' : '尚未擊敗') + '</span>' +
+      (exclusive
+        ? '<span class="bossExclusive' + (hasExclusive ? ' got' : '') + '">' +
+            (hasExclusive ? exclusive.icon + ' 已獲得專屬裝備' : '🔒 未獲得「' + esc(exclusive.name) + '」') +
+          '</span>'
+        : '') +
     '</div>';
   }).join('');
   var log = (D.rpg.bossLog || []).slice(0, 8);
@@ -2102,7 +2145,7 @@ function bossLogHTML(){
         '</div>';
       }).join('') + '</div>'
     : '';
-  return '<p class="hint" style="margin:0 0 9px">每個考科（含錯題複習池）都有一位專屬首領，擊敗👑首領才會列入紀錄，遭遇機率隨連勝提升。</p>' +
+  return '<p class="hint" style="margin:0 0 9px">每個考科（含錯題複習池）都有一位專屬首領，首次擊敗會固定掉落該科的專屬神器（紅框，加成遠高於一般裝備，但強化成本也更高，且無法分解），遭遇機率隨連勝提升。</p>' +
     '<div class="bossGrid">' + grid + '</div>' + logHtml;
 }
 function challengeCardsHTML(){
@@ -2173,6 +2216,7 @@ function bindAdventureEvents(){
       if (!it) return;
       var lv = enchantLevel(id);
       if (lv >= ENCHANT_MAX) return;
+      if (BREAKTHROUGH_LEVELS.indexOf(lv) >= 0) return;
       var cost = enchantCost(it, id);
       if (D.rpg.gold < cost) return;
       D.rpg.gold -= cost;
@@ -2184,7 +2228,7 @@ function bindAdventureEvents(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-sell]'), function(b){
     b.onclick = function(){
       var id = b.dataset.sell, it = itemById(id);
-      if (!it) return;
+      if (!it || it.noSell) return;
       var lv = enchantLevel(id);
       var sv = sellValue(it);
       var msg = '確定要分解「' + it.name + (lv ? ' +' + lv : '') + '」嗎？' +
@@ -2204,6 +2248,7 @@ function bindAdventureEvents(){
       if (!it) return;
       var lv = enchantLevel(id);
       if (lv >= ENCHANT_MAX) return;
+      if (BREAKTHROUGH_LEVELS.indexOf(lv) >= 0) return;
       var mats = materialsFor(it.slot, id);
       if (!mats.length) return;
       var matId = mats[0], matIt = itemById(matId);
@@ -2216,6 +2261,29 @@ function bindAdventureEvents(){
       if (idx >= 0) D.rpg.inv.splice(idx, 1);
       if (D.rpg.enchant && D.rpg.enchant[matId] != null) delete D.rpg.enchant[matId];
       D.rpg.gold -= fuseCost;
+      if (!D.rpg.enchant) D.rpg.enchant = {};
+      D.rpg.enchant[id] = lv + 1;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-breakthrough]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.breakthrough, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      if (BREAKTHROUGH_LEVELS.indexOf(lv) < 0) return;
+      var mats = materialsFor(it.slot, id);
+      if (mats.length < 2) return;
+      var cost = enchantCost(it, id);
+      if (D.rpg.gold < cost) return;
+      var used = mats.slice(0, 2);
+      var usedNames = used.map(function(mid){ return itemById(mid).name; }).join('、');
+      var msg = '突破需要消耗「' + usedNames + '」這2件同部位裝備（將會消失），並花費 ' + cost +
+        ' 金幣，把「' + it.name + '」突破強化到 +' + (lv + 1) + '？';
+      if (!confirm(msg)) return;
+      D.rpg.inv = D.rpg.inv.filter(function(iid){ return used.indexOf(iid) < 0; });
+      used.forEach(function(mid){ if (D.rpg.enchant && D.rpg.enchant[mid] != null) delete D.rpg.enchant[mid]; });
+      D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
       save(); checkAchievements(); renderAdventureKeepScroll();
@@ -2457,6 +2525,10 @@ function endBattle(result){
     if (m.tier === 'boss' && m.bossKey){
       D.rpg.bossKills = D.rpg.bossKills || {};
       D.rpg.bossKills[m.bossKey] = (D.rpg.bossKills[m.bossKey] || 0) + 1;
+      var exclusive = ITEMS.filter(function(i){ return i.bossExclusive === m.bossKey; })[0];
+      if (exclusive && D.rpg.inv.indexOf(exclusive.id) < 0){
+        loot = exclusive; // 首領固定掉落其專屬裝備，直到玩家取得為止
+      }
       D.rpg.bossLog = D.rpg.bossLog || [];
       D.rpg.bossLog.unshift({
         key:m.bossKey, name:m.name, icon:m.icon, date:today(),
