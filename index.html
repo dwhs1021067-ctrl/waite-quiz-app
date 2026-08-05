@@ -229,6 +229,12 @@ h2.sec:first-child{margin-top:14px}
 .meta .ai{background:var(--brand-soft);color:var(--brand)}
 
 .stem{font-size:19px;line-height:1.85;margin:0 0 8px;letter-spacing:.01em}
+.passageBox{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0 0 12px}
+.passageLab{font-size:12.5px;font-weight:700;color:var(--tx-2);margin-bottom:6px}
+.passageGroup{font-weight:500;color:var(--tx-3)}
+.passageTx{font-size:15.5px;line-height:1.8;color:var(--tx)}
+.blankCur{background:var(--warn-soft);color:var(--warn);font-weight:700;padding:1px 6px;border-radius:6px}
+.blankOther{color:var(--tx-3);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
 
 .tip{font-size:12.5px;color:var(--tx-3);margin:0 0 14px;line-height:1.55}
 
@@ -549,6 +555,8 @@ h2.sec:first-child{margin-top:14px}
   display:flex;align-items:center;gap:10px;justify-content:center;font-size:14px;font-weight:600;
 }
 .lootBox.rarity-mythic{border:2px solid #E0472E;box-shadow:0 0 16px rgba(224,71,46,.25)}
+.lootBox.stoneBox{border:2px dashed #4C8DFF;color:#4C8DFF}
+.lootBox.crystalBox{border:2px dashed #B356E0;color:#B356E0}
 
 /* ---- 題庫 ---- */
 textarea{
@@ -756,7 +764,8 @@ var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, li
 var DEF_RPG = {
   level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
-  winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[]
+  winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[],
+  enchantStone:0, breakStone:0
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
 function migrateEquip(eq){
@@ -1061,11 +1070,12 @@ function rpgDmgReduction(){
   var v = b ? itemStatValue(b, bid, 'dmgReduction') : 0;
   return Math.min(80, v);
 }
-function rpgAward(ok, unsure){
+function rpgAward(ok, unsure, isWeak){
   var g, x;
   if (ok && !unsure){ g = Math.round((5 + D.rpg.level) * rpgGoldMult()); x = Math.round(8 * rpgXpMult()); }
   else if (ok && unsure){ g = Math.round((5 + D.rpg.level) / 2 * rpgGoldMult()); x = Math.round(4 * rpgXpMult()); }
   else { g = 0; x = 1; }
+  if (isWeak) x = Math.round(x * 1.5); // 弱點加成：答對本來不熟的題目多給50%經驗
   D.rpg.gold += g;
   D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + g;
   var leveled = addXp(x);
@@ -1107,6 +1117,19 @@ function rollPracticeLoot(){
   var pick = unowned.length ? unowned : pool;
   return pick[Math.floor(Math.random() * pick.length)];
 }
+/* 練習模式專屬：強化石。答對就有機會掉，答對「本來不熟」的弱點題機率更高、也可能一次拿到2顆 */
+function rollEnchantStone(isWeak){
+  var chance = isWeak ? 0.30 : 0.12;
+  if (Math.random() > chance) return 0;
+  return (isWeak && Math.random() < 0.3) ? 2 : 1;
+}
+/* 挑戰模式（打怪）專屬：突破結晶。只有打怪勝利才會掉，怪物等級越高機率越高 */
+var BREAK_STONE_CHANCE = { weak:0.05, normal:0.10, elite:0.20, boss:0.45 };
+function rollBreakStone(tierKey){
+  var chance = BREAK_STONE_CHANCE[tierKey] || 0.10;
+  if (Math.random() > chance) return 0;
+  return tierKey === 'boss' ? 2 : 1;
+}
 function rollLoot(){
   var bonus = rpgLootBonus() / 100;
   var noneChance = Math.max(0.15, 0.55 - bonus);
@@ -1129,6 +1152,25 @@ var timer = null;
 function $(s){ return document.querySelector(s); }
 function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){
   return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); }
+function escNl(t){ return esc(t).replace(/\n/g, '<br>'); }
+/* 題組共用短文：若題目有 passage 欄位，顯示在題幹上方獨立的閱讀短文區塊，
+   題幹本身只放這一小題實際要問的問題句子，避免混在一起分不清問的是哪一題。
+   克漏字題型（同一段短文裡有多個空格）：passage 內文用 {{題號}} 標記每個空格位置，
+   搭配 blankNo 指出「這一題」是在問哪一格，畫面上會把該空格特別標示出來，其餘空格則顯示為淡色佔位，
+   讓你一眼看出上下文、也知道自己現在填的是哪一格 */
+function passageHTML(q){
+  if (!q.passage) return '';
+  var raw = escNl(q.passage);
+  if (q.blankNo != null){
+    raw = raw.replace(/\{\{\s*(\d+)\s*\}\}/g, function(_, n){
+      var cur = String(n) === String(q.blankNo);
+      return '<span class="' + (cur ? 'blankCur' : 'blankOther') + '">(' + n + ')___</span>';
+    });
+  }
+  return '<div class="passageBox"><div class="passageLab">📖 閱讀短文' +
+    (q.groupLabel ? '　<span class="passageGroup">' + esc(q.groupLabel) + '</span>' : '') +
+    '</div><div class="passageTx">' + raw + '</div></div>';
+}
 function uniq(a){ var o = []; a.forEach(function(x){ if (o.indexOf(x) < 0) o.push(x); }); return o; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function mmss(ms){ var s = Math.max(0, Math.round(ms/1000));
@@ -1163,6 +1205,16 @@ function pool(){
     if (st.subjects.length && st.subjects.indexOf(q.exam) < 0) return false;
     if (st.parts && st.parts.length && q.part && st.parts.indexOf(q.part) < 0) return false;
     if (st.skipMature && matureQ(q.id)) return false;
+    return true;
+  });
+}
+/* 跟 pool() 一樣的考科/子科目篩選，但不排除已熟練的題目——只在單題作答一輪跑完、
+   需要「回收」再出題時當備援名單用，確保備援時仍尊重當初選的考科範圍 */
+function poolIgnoreMature(){
+  var st = D.settings;
+  return BANK.filter(function(q){
+    if (st.subjects.length && st.subjects.indexOf(q.exam) < 0) return false;
+    if (st.parts && st.parts.length && q.part && st.parts.indexOf(q.part) < 0) return false;
     return true;
   });
 }
@@ -1269,32 +1321,57 @@ function renderDrill(){
   if (cd) cd.onclick = function(){ D.settings.count = Math.max(5, D.settings.count - 5); save(); renderDrill(); };
   if (swL) swL.onclick = function(){ D.settings.limit = !D.settings.limit; save(); renderDrill(); };
   $('#swM').onclick = function(){ D.settings.skipMature = !D.settings.skipMature; save(); renderDrill(); };
-  $('#go').onclick = function(){ D.settings.mode === 'single' ? startSingle(pool()) : startPaper(pool()); };
+  $('#go').onclick = function(){ D.settings.mode === 'single' ? startSingle(pool(), null, { refreshSrc: function(){ return pool().map(function(q){ return q.id; }); } }) : startPaper(pool()); };
 }
 
 /* ===================== 單題作答 ===================== */
-function startSingle(list, label){
+function startSingle(list, label, opts){
+  opts = opts || {};
   S = { mode:'single', label: label || '單題作答', src: list.map(function(q){ return q.id; }),
         used: [], id:null, pick:null, cut:[], unsure:false, graded:false,
-        n:0, right:0, ms:0, qStart:0, combo:0 };
+        n:0, right:0, ms:0, qStart:0, combo:0,
+        refreshSrc: opts.refreshSrc || null, recycled:false };
   nextSingle();
 }
 
 function pickNext(){
   var rest = S.src.filter(function(id){ return S.used.indexOf(id) < 0; });
-  if (!rest.length){ S.used = []; rest = S.src.slice(); }
+  if (!rest.length){
+    if (S.refreshSrc){
+      // 一輪跑完時，先依目前設定重新抓一次（會自動排除掉這一輪剛作答完、還沒到期的題目）
+      var fresh2 = S.refreshSrc();
+      if (fresh2.length){
+        S.src = fresh2; S.recycled = false;
+      } else {
+        // 這個範圍目前沒有到期或沒做過的題目了，改成整個範圍依「最久沒作答」回收出題，
+        // 避免立刻重複剛剛才做過的題目
+        S.src = poolIgnoreMature().map(function(q){ return q.id; }).sort(function(a, b){
+          var ap = D.progress[a] ? D.progress[a].at : 0, bp = D.progress[b] ? D.progress[b].at : 0;
+          return ap - bp;
+        });
+        S.recycled = true;
+      }
+    }
+    S.used = [];
+    rest = S.src.slice();
+  }
   if (!rest.length) return null;
-  // 優先出到期的複習題，其次沒做過的，最後其他
   var due = rest.filter(dueQ), fresh = rest.filter(function(id){ return !seenQ(id); });
-  var bag = due.length ? due : (fresh.length ? fresh : rest);
-  return bag[Math.floor(Math.random() * bag.length)];
+  if (due.length) return due[Math.floor(Math.random() * due.length)];
+  if (fresh.length) return fresh[Math.floor(Math.random() * fresh.length)];
+  if (S.recycled){
+    // 已依最久沒作答排序：用偏態亂數挑選，越久沒做的越容易被抽到，但仍保留隨機性，不是死板照順序出題
+    var idx = Math.floor(Math.pow(Math.random(), 2) * rest.length);
+    return rest[Math.min(idx, rest.length - 1)];
+  }
+  return rest[Math.floor(Math.random() * rest.length)];
 }
 
 function nextSingle(){
   var id = pickNext();
   if (!id){ endSingle(); return; }
   S.id = id; S.pick = null; S.cut = []; S.unsure = false; S.graded = false; S.qStart = Date.now();
-  S.mMon = miniMonsterFor(); S.lastLoot = null;
+  S.mMon = miniMonsterFor(); S.lastLoot = null; S.lastStone = 0;
   S.used.push(id);
   renderSingle();
 }
@@ -1323,13 +1400,16 @@ function renderSingle(){
       (S.graded && S.lastLoot
         ? '<div class="lootBox rarity-' + S.lastLoot.rarity + '"><span class="itIcon">' + S.lastLoot.icon + '</span>掉落「' + esc(S.lastLoot.name) + '」' + (statText(S.lastLoot) ? '　' + statText(S.lastLoot) : '') + '</div>'
         : '') +
+      (S.graded && S.lastStone
+        ? '<div class="lootBox stoneBox">🔹 獲得 ' + S.lastStone + ' 顆強化石' + (S.lastStone > 1 ? '（弱點加成！）' : '') + '</div>'
+        : '') +
       '<div class="meta">' +
         lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
         '<span class="' + (/生成|AI/.test(q.source || '') ? 'ai' : '') + '">' + esc(q.source || '未註明來源') + '</span>' +
         (lg.flagged ? '<span class="law">⚠ 法規時效</span>' : '') +
       '</div>' +
 
-      '<p class="stem">' + esc(q.stem) + '</p>' +
+      passageHTML(q) + '<p class="stem">' + esc(q.stem) + '</p>' +
       (S.graded ? '' : '<p class="tip">點選項即作答。右側 ✕ 可先刪去確定錯誤的選項，不會送出答案。</p>') +
 
       '<div class="opts" id="opts">' + optsHTML(q, ok) + '</div>' +
@@ -1399,6 +1479,7 @@ function grade(q){
   var spent = Date.now() - S.qStart;
   var ok = S.pick === q.answer;
   var p = P(q.id);
+  var priorLv = p.lv; // 弱點加成：記錄本次作答前的熟練度，判斷這是不是你的弱點題
   p.seen++; p.ms += spent; p.at = Date.now();
   if (ok) p.right++; else p.wrong++;
   if (S.unsure) p.unsure++;
@@ -1411,9 +1492,12 @@ function grade(q){
   if (D.days.indexOf(today()) < 0) D.days.push(today());
 
   S.graded = true; S.lastMs = spent; S.n++; if (ok) S.right++; S.ms += spent;
-  S.lastReward = rpgAward(ok, S.unsure);
+  var isWeak = ok && !S.unsure && priorLv <= 1; // 熟練度低（0～1階）代表這本來是你的弱點
+  S.lastReward = rpgAward(ok, S.unsure, isWeak);
   S.lastLoot = ok ? rollPracticeLoot() : null;
   if (S.lastLoot) D.rpg.inv.push(S.lastLoot.id);
+  S.lastStone = ok ? rollEnchantStone(isWeak) : 0;
+  if (S.lastStone) D.rpg.enchantStone = (D.rpg.enchantStone || 0) + S.lastStone;
   if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
   else { S.combo = 0; }
   save(); refreshBadge(); checkAchievements(); renderSingle();
@@ -1468,7 +1552,7 @@ function endSingle(){
     '</div>' +
     '<button class="btn" id="again">再開始一輪</button>' +
     '<button class="btn sec" id="home">回到設定</button>';
-  $('#again').onclick = function(){ startSingle(pool()); };
+  $('#again').onclick = function(){ startSingle(pool(), null, { refreshSrc: function(){ return pool().map(function(q){ return q.id; }); } }); };
   $('#home').onclick = function(){ renderDrill(); };
   refreshBadge();
 }
@@ -1503,7 +1587,7 @@ function renderPaper(){
     '<div class="q">' +
       '<div class="meta">' + lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
         '<span>' + esc(q.source || '未註明來源') + '</span></div>' +
-      '<p class="stem">' + esc(q.stem) + '</p>' +
+      passageHTML(q) + '<p class="stem">' + esc(q.stem) + '</p>' +
       '<p class="tip">考卷模式作答後不顯示對錯，交卷才統一批改。</p>' +
       '<div class="opts" id="opts">' + optsHTML(q, false) + '</div>' +
       '<button class="unsure" id="uns" aria-pressed="' + S.unsure + '">' +
@@ -1980,6 +2064,10 @@ function renderAdventure(){
       '<span>💰 金幣 +' + goldB + '%</span><span>⭐ 經驗 +' + xpB + '%</span>' +
       '<span>🎁 掉寶 +' + lootB + '%</span><span>🛡️ 減傷 ' + dmgR + '%</span>' +
     '</div>' +
+    '<div class="statRow">' +
+      '<span title="練習模式答對會掉，弱點題機率更高">🔹 強化石 ' + (D.rpg.enchantStone || 0) + '</span>' +
+      '<span title="打怪勝利才會掉，怪物等級越高機率越高">🔮 突破結晶 ' + (D.rpg.breakStone || 0) + '</span>' +
+    '</div>' +
 
     accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
 
@@ -2120,18 +2208,22 @@ function slotDetailHTML(key){
     var lv = enchantLevel(id), maxed = lv >= ENCHANT_MAX, cost = enchantCost(it, id);
     var mats = materialsFor(dataSlot, id), fuseCost = Math.round(cost / 2);
     var needsBreak = BREAKTHROUGH_LEVELS.indexOf(lv) >= 0;
+    var stones = D.rpg.enchantStone || 0, crystals = D.rpg.breakStone || 0;
     var noteHtml = '', actionsHtml;
     if (maxed){
       actionsHtml = '<span class="owned">已滿級</span>';
     } else if (needsBreak){
       var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
+      var canBreakCrystal = crystals >= 2 && D.rpg.gold >= cost;
       var curTier = enchantTierFor(lv), nextTier = enchantTierFor(lv + 1);
-      noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>2件</b> 同部位裝備作為突破素材，才能突破至【' + nextTier.name + '】階段' +
-        (mats.length < 2 ? '（目前只有 ' + mats.length + ' 件可用素材）' : '') + '</div>';
-      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 突破至【' + nextTier.name + '】💰' + cost + '</button>';
+      noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>2件</b> 同部位裝備、或 <b>2顆突破結晶</b>🔮 作為突破素材，才能突破至【' + nextTier.name + '】階段' +
+        (mats.length < 2 ? '（目前有 ' + mats.length + ' 件可用裝備素材、' + crystals + ' 顆突破結晶）' : '') + '</div>';
+      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 用裝備突破 💰' + cost + '</button>' +
+        '<button class="btn tiny sec break" data-breakthrough-crystal="' + id + '"' + (canBreakCrystal ? '' : ' disabled') + '>🔮 用突破結晶突破 💰' + cost + '</button>';
     } else {
       actionsHtml = '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>' +
-        (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '');
+        (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '') +
+        '<button class="btn tiny sec stone" data-enchant-stone="' + id + '"' + (stones ? '' : ' disabled') + '>🔹 用強化石強化（免金幣，剩 ' + stones + ' 顆）</button>';
     }
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
@@ -2241,7 +2333,7 @@ function bossLogHTML(){
 function challengeCardsHTML(){
   var due = BANK.filter(function(q){ return dueQ(q.id); });
   var streak = D.rpg.winStreak || 0;
-  var html = '<p class="hint" style="margin:0 0 9px">遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣與掉寶稀有度都更高。' +
+  var html = '<p class="hint" style="margin:0 0 9px">遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣、掉寶稀有度與突破結晶🔮機率都更高。突破結晶只有打怪勝利才會掉，用來突破裝備的關卡（+4→+5、+8→+9），可以取代消耗自己裝備當素材。' +
     (streak > 0 ? '目前連勝 <b>' + streak + '</b> 場，遇到精英／首領的機率已提高，且金幣有連勝加成，小心別輸掉！' : '') + '</p>';
   html += '<div class="card chCard" data-battle="review"' + (due.length ? '' : ' style="opacity:.45"') + '>' +
     '<div class="chIcon">🧟</div><div class="chInfo"><div class="chName">錯題複習池</div>' +
@@ -2338,6 +2430,20 @@ function bindAdventureEvents(){
       save(); checkAchievements(); renderAdventureKeepScroll();
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-enchant-stone]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.enchantStone, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      if (lv >= ENCHANT_MAX) return;
+      if (BREAKTHROUGH_LEVELS.indexOf(lv) >= 0) return;
+      if ((D.rpg.enchantStone || 0) < 1) return;
+      D.rpg.enchantStone -= 1;
+      if (!D.rpg.enchant) D.rpg.enchant = {};
+      D.rpg.enchant[id] = lv + 1;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-sell]'), function(b){
     b.onclick = function(){
       var id = b.dataset.sell, it = itemById(id);
@@ -2400,6 +2506,29 @@ function bindAdventureEvents(){
       if (!confirm(msg)) return;
       D.rpg.inv = D.rpg.inv.filter(function(iid){ return used.indexOf(iid) < 0; });
       used.forEach(function(mid){ if (D.rpg.enchant && D.rpg.enchant[mid] != null) delete D.rpg.enchant[mid]; });
+      D.rpg.gold -= cost;
+      if (!D.rpg.enchant) D.rpg.enchant = {};
+      D.rpg.enchant[id] = lv + 1;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+      var newTier = enchantTierFor(lv + 1);
+      setTimeout(function(){
+        alert('⚡ 突破成功！\n「' + it.name + '」躍升至【' + newTier.name + '】階段（+' + (lv + 1) + '）！');
+      }, 50);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-breakthrough-crystal]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.breakthroughCrystal, it = itemById(id);
+      if (!it) return;
+      var lv = enchantLevel(id);
+      if (BREAKTHROUGH_LEVELS.indexOf(lv) < 0) return;
+      if ((D.rpg.breakStone || 0) < 2) return;
+      var cost = enchantCost(it, id);
+      if (D.rpg.gold < cost) return;
+      var msg = '突破需要消耗 <b>2顆突破結晶</b>🔮，並花費 ' + cost +
+        ' 金幣，把「' + it.name + '」突破強化到 +' + (lv + 1) + '？';
+      if (!confirm(msg.replace(/<\/?b>/g,''))) return;
+      D.rpg.breakStone -= 2;
       D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
@@ -2566,7 +2695,7 @@ function renderBattle(){
         lineage(q).map(function(t){ return '<span>' + esc(t) + '</span>'; }).join('') +
         (lg.flagged ? '<span class="law">⚠ 法規時效</span>' : '') +
       '</div>' +
-      '<p class="stem">' + esc(q.stem) + '</p>' +
+      passageHTML(q) + '<p class="stem">' + esc(q.stem) + '</p>' +
       (S.graded ? '' : '<p class="tip">點選項即出招；答對造成傷害，答錯會被反擊。</p>') +
       '<div class="opts" id="opts">' + optsHTML(q, ok) + '</div>' +
       (S.graded ? '' :
@@ -2633,11 +2762,13 @@ function battleGrade(q){
 function endBattle(result){
   stopClock();
   var m = S.monster, n = S.n, right = S.right, ms = S.ms;
-  var bonusGold, bonusXp, loot = null, streakBonusGold = 0;
+  var bonusGold, bonusXp, loot = null, streakBonusGold = 0, breakStone = 0;
   if (result === 'victory'){
     bonusGold = Math.round((15 + Math.round(m.maxHp/3)) * (m.goldMult || 1));
     bonusXp = Math.round((10 + Math.round(m.maxHp/4)) * (m.xpMult || 1));
     loot = rollLootForTier(m.tier);
+    breakStone = rollBreakStone(m.tier);
+    if (breakStone) D.rpg.breakStone = (D.rpg.breakStone || 0) + breakStone;
     D.rpg.wins = (D.rpg.wins || 0) + 1;
     D.rpg.winStreak = (D.rpg.winStreak || 0) + 1;
     if (D.rpg.winStreak > (D.rpg.bestWinStreak || 0)) D.rpg.bestWinStreak = D.rpg.winStreak;
@@ -2670,10 +2801,10 @@ function endBattle(result){
   save(); refreshBadge();
   S = null;
   checkAchievements();
-  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold);
+  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone);
 }
 
-function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold){
+function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone){
   var title = result === 'victory' ? ('擊敗了' + (m.tagIcon ? m.tagIcon + ' ' : '') + '「' + esc(m.name) + '」！') : (result === 'draw' ? '怪物逃走了' : '你撤退了');
   var icon = result === 'victory' ? '🏆' : (result === 'draw' ? '💨' : '🏳️');
   $('#s-adventure').innerHTML =
@@ -2685,6 +2816,7 @@ function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, l
       (result === 'victory' && D.rpg.winStreak > 1 ? '<div class="m">🔥 連勝 ' + D.rpg.winStreak + ' 場' + (streakBonusGold ? '（連勝加成 +' + streakBonusGold + '💰）' : '') + '</div>' : '') +
       (result !== 'victory' ? '<div class="hint" style="margin-top:4px">連勝紀錄已中斷，下次再挑戰吧。</div>' : '') +
       (loot ? '<div class="lootBox rarity-' + loot.rarity + '"><span class="itIcon">' + loot.icon + '</span>掉落「' + esc(loot.name) + '」' + (statText(loot) ? '　' + statText(loot) : '') + '</div>' : '') +
+      (breakStone ? '<div class="lootBox crystalBox">🔮 獲得 ' + breakStone + ' 顆突破結晶</div>' : '') +
     '</div>' +
     '<button class="btn" id="back">返回冒險</button>';
   $('#back').onclick = function(){ renderAdventure(); };
