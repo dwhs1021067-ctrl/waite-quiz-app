@@ -768,7 +768,7 @@ var SEED = [
 
 /* ===================== 狀態 ===================== */
 var BANK = [];
-var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto' };
+var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto', prioritizeNew:false };
 var DEF_RPG = {
   level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
@@ -1281,16 +1281,19 @@ function renderDrill(){
 
     '<h2 class="sec">選項</h2>' +
     '<div class="card">' +
+      '<div class="row"><div><div class="lab">符合條件的題目</div><div class="hint">共 ' + p.length + ' 題（🔁 到期複習 ' + p.filter(function(q){ return dueQ(q.id); }).length + '・🆕 全新沒做過 ' + p.filter(function(q){ return !seenQ(q.id); }).length + '）</div></div></div>' +
       (st.mode === 'paper'
-        ? '<div class="row"><div><div class="lab">題數</div><div class="hint">符合條件共 ' + p.length + ' 題</div></div>' +
+        ? '<div class="row"><div><div class="lab">題數</div><div class="hint">本次考卷抽題數量</div></div>' +
           '<div class="step"><button id="cd">−</button><span class="v" id="cv">' +
             Math.min(st.count, Math.max(1, p.length)) + '</span><button id="cu">＋</button></div></div>' +
           '<div class="row"><div><div class="lab">倒數計時</div><div class="hint">每題 90 秒累計，時間到自動交卷</div></div>' +
           '<button class="sw" id="swL" aria-pressed="' + st.limit + '" aria-label="倒數計時"></button></div>'
         : '') +
       '<div class="row"><div><div class="lab">跳過已熟練的題目</div><div class="hint">複習排程中尚未到期的題目不再出現，共 ' +
-        BANK.filter(function(q){ return matureQ(q.id); }).length + ' 題</div></div>' +
+        BANK.filter(function(q){ return (!st.subjects.length || st.subjects.indexOf(q.exam) >= 0) && (!st.parts || !st.parts.length || !q.part || st.parts.indexOf(q.part) >= 0) && matureQ(q.id); }).length + ' 題</div></div>' +
         '<button class="sw" id="swM" aria-pressed="' + st.skipMature + '" aria-label="跳過已熟練"></button></div>' +
+      '<div class="row"><div><div class="lab">優先出全新題目</div><div class="hint">開啟後優先出「沒做過」的題目，到期複習題往後排；關閉則維持預設，到期複習題優先</div></div>' +
+        '<button class="sw" id="swN" aria-pressed="' + !!st.prioritizeNew + '" aria-label="優先出全新題目"></button></div>' +
     '</div>' +
 
     '<button class="btn" id="go" ' + (p.length ? '' : 'disabled') + '>' +
@@ -1333,6 +1336,7 @@ function renderDrill(){
   if (cd) cd.onclick = function(){ D.settings.count = Math.max(5, D.settings.count - 5); save(); renderDrill(); };
   if (swL) swL.onclick = function(){ D.settings.limit = !D.settings.limit; save(); renderDrill(); };
   $('#swM').onclick = function(){ D.settings.skipMature = !D.settings.skipMature; save(); renderDrill(); };
+  $('#swN').onclick = function(){ D.settings.prioritizeNew = !D.settings.prioritizeNew; save(); renderDrill(); };
   $('#go').onclick = function(){ D.settings.mode === 'single' ? startSingle(pool(), null, { refreshSrc: function(){ return pool().map(function(q){ return q.id; }); } }) : startPaper(pool()); };
 }
 
@@ -1360,8 +1364,10 @@ function pickNext(){
   if (!rest.length) return null;
   var due = rest.filter(dueQ), fresh = rest.filter(function(id){ return !seenQ(id); });
   S.noNewLeft = false;
-  if (due.length) return due[Math.floor(Math.random() * due.length)];
-  if (fresh.length) return fresh[Math.floor(Math.random() * fresh.length)];
+  var firstBag = D.settings.prioritizeNew ? fresh : due;
+  var secondBag = D.settings.prioritizeNew ? due : fresh;
+  if (firstBag.length) return firstBag[Math.floor(Math.random() * firstBag.length)];
+  if (secondBag.length) return secondBag[Math.floor(Math.random() * secondBag.length)];
   // 這個範圍目前沒有到期或沒做過的題目了：依「最久沒作答」排序後用偏態亂數挑選，
   // 越久沒做的越容易被抽到，避免一直重複最近才做過的（不管是這裡自然遇到、還是上面重置後遇到都適用）
   S.noNewLeft = true;
