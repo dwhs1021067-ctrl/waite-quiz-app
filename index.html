@@ -235,6 +235,13 @@ h2.sec:first-child{margin-top:14px}
 .passageTx{font-size:15.5px;line-height:1.8;color:var(--tx)}
 .blankCur{background:var(--warn-soft);color:var(--warn);font-weight:700;padding:1px 6px;border-radius:6px}
 .blankOther{color:var(--tx-3);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.infoBox{margin:0 0 10px}
+.infoBox summary{cursor:pointer;list-style:none;font-size:13px;color:var(--tx-2);font-weight:600;
+  display:inline-flex;align-items:center;gap:4px;padding:4px 0;-webkit-tap-highlight-color:transparent}
+.infoBox summary::-webkit-details-marker{display:none}
+.infoBox summary::after{content:'展開說明';color:var(--tx-3);font-weight:400}
+.infoBox[open] summary::after{content:'收起說明'}
+.infoBox .hint{margin:6px 0 0;padding:9px 11px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--tx-2);line-height:1.6}
 
 .tip{font-size:12.5px;color:var(--tx-3);margin:0 0 14px;line-height:1.55}
 
@@ -464,7 +471,8 @@ h2.sec:first-child{margin-top:14px}
 .itRow2{padding:11px 13px;border-left:4px solid var(--line)}
 .itRow2 + .itRow2{border-top:1px solid var(--line-2)}
 .itTop{display:flex;align-items:center;gap:11px}
-.itSub{display:flex;gap:8px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.itSub{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.itSub .btn{display:inline-block;width:auto;flex:1 1 auto;min-width:0;white-space:nowrap;margin-top:0;padding:10px 12px;font-size:13.5px}
 .itRow2 .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 13px;font-size:13px;border-radius:8px;white-space:nowrap}
 .btn.warn{background:var(--no-soft);color:var(--no);border-color:transparent}
 .itInfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -1158,6 +1166,10 @@ function escNl(t){ return esc(t).replace(/\n/g, '<br>'); }
    克漏字題型（同一段短文裡有多個空格）：passage 內文用 {{題號}} 標記每個空格位置，
    搭配 blankNo 指出「這一題」是在問哪一格，畫面上會把該空格特別標示出來，其餘空格則顯示為淡色佔位，
    讓你一眼看出上下文、也知道自己現在填的是哪一格 */
+/* 冒險頁的說明文字改用這個包起來，預設收合，需要時再點開看，避免每個區塊都塞滿說明擠壓版面 */
+function infoBox(text){
+  return '<details class="infoBox"><summary>ℹ️</summary><p class="hint">' + text + '</p></details>';
+}
 function passageHTML(q){
   if (!q.passage) return '';
   var raw = escNl(q.passage);
@@ -1330,7 +1342,7 @@ function startSingle(list, label, opts){
   S = { mode:'single', label: label || '單題作答', src: list.map(function(q){ return q.id; }),
         used: [], id:null, pick:null, cut:[], unsure:false, graded:false,
         n:0, right:0, ms:0, qStart:0, combo:0,
-        refreshSrc: opts.refreshSrc || null, recycled:false };
+        refreshSrc: opts.refreshSrc || null, noNewLeft:false };
   nextSingle();
 }
 
@@ -1340,31 +1352,25 @@ function pickNext(){
     if (S.refreshSrc){
       // 一輪跑完時，先依目前設定重新抓一次（會自動排除掉這一輪剛作答完、還沒到期的題目）
       var fresh2 = S.refreshSrc();
-      if (fresh2.length){
-        S.src = fresh2; S.recycled = false;
-      } else {
-        // 這個範圍目前沒有到期或沒做過的題目了，改成整個範圍依「最久沒作答」回收出題，
-        // 避免立刻重複剛剛才做過的題目
-        S.src = poolIgnoreMature().map(function(q){ return q.id; }).sort(function(a, b){
-          var ap = D.progress[a] ? D.progress[a].at : 0, bp = D.progress[b] ? D.progress[b].at : 0;
-          return ap - bp;
-        });
-        S.recycled = true;
-      }
+      S.src = fresh2.length ? fresh2 : poolIgnoreMature().map(function(q){ return q.id; });
     }
     S.used = [];
     rest = S.src.slice();
   }
   if (!rest.length) return null;
   var due = rest.filter(dueQ), fresh = rest.filter(function(id){ return !seenQ(id); });
+  S.noNewLeft = false;
   if (due.length) return due[Math.floor(Math.random() * due.length)];
   if (fresh.length) return fresh[Math.floor(Math.random() * fresh.length)];
-  if (S.recycled){
-    // 已依最久沒作答排序：用偏態亂數挑選，越久沒做的越容易被抽到，但仍保留隨機性，不是死板照順序出題
-    var idx = Math.floor(Math.pow(Math.random(), 2) * rest.length);
-    return rest[Math.min(idx, rest.length - 1)];
-  }
-  return rest[Math.floor(Math.random() * rest.length)];
+  // 這個範圍目前沒有到期或沒做過的題目了：依「最久沒作答」排序後用偏態亂數挑選，
+  // 越久沒做的越容易被抽到，避免一直重複最近才做過的（不管是這裡自然遇到、還是上面重置後遇到都適用）
+  S.noNewLeft = true;
+  var sorted = rest.slice().sort(function(a, b){
+    var ap = D.progress[a] ? D.progress[a].at : 0, bp = D.progress[b] ? D.progress[b].at : 0;
+    return ap - bp;
+  });
+  var idx = Math.floor(Math.pow(Math.random(), 2) * sorted.length);
+  return sorted[Math.min(idx, sorted.length - 1)];
 }
 
 function nextSingle(){
@@ -1388,6 +1394,8 @@ function renderSingle(){
         (S.n ? '　已答 ' + S.n + '・正確 ' + S.right : '') + '</span>' +
       '<span class="clk" id="clk">00:00</span>' +
     '</div>' +
+
+    (S.noNewLeft ? '<p class="hint" style="margin:0 0 10px">📚 這個範圍目前沒有到期或沒做過的題目了，以下改為複習題（越久沒做的越容易出現）。</p>' : '') +
 
     '<div class="q">' +
       '<div class="' + (S.graded ? (ok ? 'miniMon defeated' : 'miniMon hit') : 'miniMon') + '">' +
@@ -2072,13 +2080,13 @@ function renderAdventure(){
     accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
 
     accSection('subject', '分科屬性', '', 
-      '<p class="hint" style="margin:0 0 9px">科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。</p>' +
+      infoBox('科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。') +
       '<div class="card">' + subjectAttrHTML() + '</div>') +
 
     accSection('equip', '裝備欄', equippedCount + ' / 7', dollHTML(), true) +
 
     accSection('shop', '商店', '',
-      '<p class="hint" style="margin:0 0 9px">稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。</p>' +
+      infoBox('稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。') +
       shopSlotHTML('weapon','武器','🗡️') +
       shopSlotHTML('armor','防具','🛡️') +
       shopSlotHTML('helmet','頭盔','🪖') +
@@ -2087,12 +2095,13 @@ function renderAdventure(){
 
     accSection('inv', '背包', D.rpg.inv.length + ' 件',
       (D.rpg.inv.length
-        ? '<p class="hint" style="margin:0 0 9px">用不到的裝備可以「分解」換金幣；強化、用素材強化與更換裝備請至上方「裝備欄」點選人物身上的部位操作。</p><div class="card">' + D.rpg.inv.map(invRowHTML).join('') + '</div>'
+        ? infoBox('用不到的裝備可以「分解」換金幣；強化、用素材強化與更換裝備請至上方「裝備欄」點選人物身上的部位操作。') + '<div class="card">' + D.rpg.inv.map(invRowHTML).join('') + '</div>'
         : '<p class="hint" style="margin:0 2px">還沒有任何裝備，打怪或到商店購買吧。</p>')) +
 
     accSection('challenge', '選擇挑戰', due ? due + ' 題待複習' : '',
-      '<p class="hint" style="margin:0 0 9px">答對造成傷害、答錯會被反擊；不論輸贏，作答紀錄與複習排程都會照常保存。</p>' +
+      infoBox('答對造成傷害、答錯會被反擊；不論輸贏，作答紀錄與複習排程都會照常保存。遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣、掉寶稀有度與突破結晶🔮機率都更高（突破結晶用來突破裝備關卡，可取代消耗自己裝備當素材）。') +
       challengeCardsHTML(), true) +
+
 
     accSection('bosslog', '首領圖鑑', Object.keys(D.rpg.bossKills || {}).length + ' / ' + (EXAM_NAMES.length + 1),
       bossLogHTML());
@@ -2191,7 +2200,7 @@ function dollHTML(){
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
   var detail = ADV_SLOT_OPEN
     ? slotDetailHTML(ADV_SLOT_OPEN)
-    : '<p class="hint" style="text-align:center;margin:0 0 4px">點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件。邊框顏色代表裝備稀有度，右下角圓點顏色代表強化階段。</p>';
+    : infoBox('點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件。邊框顏色代表裝備稀有度，右下角圓點顏色代表強化階段。');
   return body + detail;
 }
 function slotDetailHTML(key){
@@ -2218,12 +2227,12 @@ function slotDetailHTML(key){
       var curTier = enchantTierFor(lv), nextTier = enchantTierFor(lv + 1);
       noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>2件</b> 同部位裝備、或 <b>2顆突破結晶</b>🔮 作為突破素材，才能突破至【' + nextTier.name + '】階段' +
         (mats.length < 2 ? '（目前有 ' + mats.length + ' 件可用裝備素材、' + crystals + ' 顆突破結晶）' : '') + '</div>';
-      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 用裝備突破 💰' + cost + '</button>' +
-        '<button class="btn tiny sec break" data-breakthrough-crystal="' + id + '"' + (canBreakCrystal ? '' : ' disabled') + '>🔮 用突破結晶突破 💰' + cost + '</button>';
+      actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 裝備突破 💰' + cost + '</button>' +
+        '<button class="btn tiny sec break" data-breakthrough-crystal="' + id + '"' + (canBreakCrystal ? '' : ' disabled') + '>🔮 結晶突破 💰' + cost + '</button>';
     } else {
       actionsHtml = '<button class="btn tiny" data-enchant="' + id + '"' + (D.rpg.gold < cost ? ' disabled' : '') + '>強化 💰' + cost + '</button>' +
-        (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 用素材強化 💰' + fuseCost + '</button>' : '') +
-        '<button class="btn tiny sec stone" data-enchant-stone="' + id + '"' + (stones ? '' : ' disabled') + '>🔹 用強化石強化（免金幣，剩 ' + stones + ' 顆）</button>';
+        (mats.length ? '<button class="btn tiny sec fuse" data-fuse="' + id + '">🔧 素材強化 💰' + fuseCost + '</button>' : '') +
+        '<button class="btn tiny sec stone" data-enchant-stone="' + id + '"' + (stones ? '' : ' disabled') + '>🔹 強化石強化（剩' + stones + '）</button>';
     }
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
@@ -2327,14 +2336,13 @@ function bossLogHTML(){
         '</div>';
       }).join('') + '</div>'
     : '';
-  return '<p class="hint" style="margin:0 0 9px">每個考科（含錯題複習池）都有一位專屬首領，首次擊敗會固定掉落該科的專屬神器（紅框，加成遠高於一般裝備，但強化成本也更高，且無法分解），遭遇機率隨連勝提升。</p>' +
+  return infoBox('每個考科（含錯題複習池）都有一位專屬首領，首次擊敗會固定掉落該科的專屬神器（紅框，加成遠高於一般裝備，但強化成本也更高，且無法分解），遭遇機率隨連勝提升。') +
     '<div class="bossGrid">' + grid + '</div>' + logHtml;
 }
 function challengeCardsHTML(){
   var due = BANK.filter(function(q){ return dueQ(q.id); });
   var streak = D.rpg.winStreak || 0;
-  var html = '<p class="hint" style="margin:0 0 9px">遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣、掉寶稀有度與突破結晶🔮機率都更高。突破結晶只有打怪勝利才會掉，用來突破裝備的關卡（+4→+5、+8→+9），可以取代消耗自己裝備當素材。' +
-    (streak > 0 ? '目前連勝 <b>' + streak + '</b> 場，遇到精英／首領的機率已提高，且金幣有連勝加成，小心別輸掉！' : '') + '</p>';
+  var html = streak > 0 ? '<p class="hint" style="margin:0 0 9px">目前連勝 <b>' + streak + '</b> 場，遇到精英／首領的機率已提高，且金幣有連勝加成，小心別輸掉！</p>' : '';
   html += '<div class="card chCard" data-battle="review"' + (due.length ? '' : ' style="opacity:.45"') + '>' +
     '<div class="chIcon">🧟</div><div class="chInfo"><div class="chName">錯題複習池</div>' +
     '<div class="hint">' + (due.length ? due.length + ' 題待複習，適合打怪順便複習' : '目前沒有到期的複習題') + '</div></div>' +
