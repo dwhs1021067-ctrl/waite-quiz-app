@@ -802,7 +802,7 @@ function migrateEquip(eq){
     if (Array.isArray(v)) return v.filter(Boolean).slice(0, max || 2);
     return v ? [v] : [];
   }
-  return {
+  var out = {
     weapon: toArr(eq.weapon),
     armor: eq.armor || null,
     helmet: eq.helmet || null,
@@ -810,6 +810,27 @@ function migrateEquip(eq){
     accessory: toArr(eq.accessory),
     relic: toArr(eq.relic, RELIC_SLOTS)
   };
+  // 舊資料相容：把原本裝在一般欄位裡的首領專屬裝備，自動搬去首領遺物欄，
+  // 讓「首領專屬裝備只能裝在遺物欄」這條規則對舊存檔也生效，不用玩家手動搬
+  ['weapon','armor','helmet','boots','accessory'].forEach(function(slotKey){
+    var v = out[slotKey];
+    if (Array.isArray(v)){
+      for (var i = v.length - 1; i >= 0; i--){
+        var it = itemById(v[i]);
+        if (it && it.bossExclusive){
+          if (out.relic.length < RELIC_SLOTS && out.relic.indexOf(v[i]) < 0) out.relic.push(v[i]);
+          v.splice(i, 1);
+        }
+      }
+    } else if (v){
+      var it2 = itemById(v);
+      if (it2 && it2.bossExclusive){
+        if (out.relic.length < RELIC_SLOTS && out.relic.indexOf(v) < 0) out.relic.push(v);
+        out[slotKey] = null;
+      }
+    }
+  });
+  return out;
 }
 
 /* ===================== RPG：裝備目錄 ===================== */
