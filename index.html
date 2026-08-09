@@ -375,7 +375,7 @@ h2.sec:first-child{margin-top:14px}
 .statRow{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 2px 0;font-size:14px;color:var(--tx-2)}
 
 .dollWrap{
-  position:relative;width:100%;max-width:280px;height:300px;margin:6px auto 10px;
+  position:relative;width:100%;max-width:280px;height:260px;margin:6px auto 10px;
 }
 .dollBody{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
@@ -409,9 +409,6 @@ h2.sec:first-child{margin-top:14px}
 .dollSlot[data-doll="accessory1"]{top:72px;right:0}
 .dollSlot[data-doll="accessory2"]{top:126px;right:0}
 .dollSlot[data-doll="boots"]{bottom:0;left:50%;transform:translateX(-50%)}
-.dollSlot[data-doll="relic1"]{top:172px;left:0;border-style:dashed}
-.dollSlot[data-doll="relic2"]{top:172px;right:0;border-style:dashed}
-.dollSlot.filled[data-doll="relic1"],.dollSlot.filled[data-doll="relic2"]{border-style:solid}
 .dollDetail{margin-top:2px}
 .dollDetail .itRow2{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;margin-bottom:9px}
 .dollDetail .itRow2.rarity-common{border-left-color:#9AA0A6}
@@ -787,19 +784,16 @@ var SEED = [
 var BANK = [];
 var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto', prioritizeNew:false };
 var DEF_RPG = {
-  level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[],relic:[]}, inv:[], enchant:{},
+  level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
   winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[],
   enchantStone:0, breakStone:0
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
-/* 首領遺物欄：格數刻意少於首領總數（目前7位首領：6考科+錯題複習池），
-   讓玩家在多件首領專屬裝備中做取捨，而不是集滿就沒有選擇空間 */
-var RELIC_SLOTS = 2;
 function migrateEquip(eq){
   eq = eq || {};
-  function toArr(v, max){
-    if (Array.isArray(v)) return v.filter(Boolean).slice(0, max || 2);
+  function toArr(v){
+    if (Array.isArray(v)) return v.filter(Boolean).slice(0, 2);
     return v ? [v] : [];
   }
   var out = {
@@ -807,27 +801,18 @@ function migrateEquip(eq){
     armor: eq.armor || null,
     helmet: eq.helmet || null,
     boots: eq.boots || null,
-    accessory: toArr(eq.accessory),
-    relic: toArr(eq.relic, RELIC_SLOTS)
+    accessory: toArr(eq.accessory)
   };
-  // 舊資料相容：把原本裝在一般欄位裡的首領專屬裝備，自動搬去首領遺物欄，
-  // 讓「首領專屬裝備只能裝在遺物欄」這條規則對舊存檔也生效，不用玩家手動搬
-  ['weapon','armor','helmet','boots','accessory'].forEach(function(slotKey){
-    var v = out[slotKey];
-    if (Array.isArray(v)){
-      for (var i = v.length - 1; i >= 0; i--){
-        var it = itemById(v[i]);
-        if (it && it.bossExclusive){
-          if (out.relic.length < RELIC_SLOTS && out.relic.indexOf(v[i]) < 0) out.relic.push(v[i]);
-          v.splice(i, 1);
-        }
-      }
-    } else if (v){
-      var it2 = itemById(v);
-      if (it2 && it2.bossExclusive){
-        if (out.relic.length < RELIC_SLOTS && out.relic.indexOf(v) < 0) out.relic.push(v);
-        out[slotKey] = null;
-      }
+  // 舊資料相容：先前版本曾把首領專屬裝備另外收在獨立的「遺物欄」(eq.relic)，
+  // 現在改回跟一般裝備共用欄位，所以要把 relic 裡的裝備依照其本身的 slot 搬回對應欄位
+  var relicOld = Array.isArray(eq.relic) ? eq.relic.filter(Boolean) : (eq.relic ? [eq.relic] : []);
+  relicOld.forEach(function(id){
+    var it = itemById(id);
+    if (!it) return;
+    if (it.slot === 'weapon' || it.slot === 'accessory'){
+      if (out[it.slot].indexOf(id) < 0 && out[it.slot].length < 2) out[it.slot].push(id);
+    } else if (!out[it.slot]){
+      out[it.slot] = id;
     }
   });
   return out;
@@ -1085,7 +1070,6 @@ function isEquipped(id){
   if (eq.armor === id || eq.helmet === id || eq.boots === id) return true;
   if (Array.isArray(eq.weapon) && eq.weapon.indexOf(id) >= 0) return true;
   if (Array.isArray(eq.accessory) && eq.accessory.indexOf(id) >= 0) return true;
-  if (Array.isArray(eq.relic) && eq.relic.indexOf(id) >= 0) return true;
   return false;
 }
 function rpgAtk(){
@@ -1093,52 +1077,33 @@ function rpgAtk(){
   var eq = equipList('weapon').reduce(function(sum, wid){
     var w = itemById(wid); return sum + (w ? itemStatValue(w, wid, 'atk') : 0);
   }, 0);
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'atk') : 0);
-  }, 0);
-  return base + eq + relic + subjectBonusTotal('atk');
+  return base + eq + subjectBonusTotal('atk');
 }
 function rpgMaxHp(){
   var base = 40 + D.rpg.level*8, aid = D.rpg.equip.armor, a = itemById(aid);
   var eq = a ? itemStatValue(a, aid, 'hp') : 0;
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'hp') : 0);
-  }, 0);
-  return base + eq + relic + subjectBonusTotal('hp');
+  return base + eq + subjectBonusTotal('hp');
 }
 function rpgGoldMult(){
   var eq = equipList('accessory').reduce(function(sum, cid){
     var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'goldPct') : 0);
   }, 0);
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'goldPct') : 0);
-  }, 0);
-  return 1 + (eq + relic + subjectBonusTotal('goldPct'))/100;
+  return 1 + (eq + subjectBonusTotal('goldPct'))/100;
 }
 function rpgXpMult(){
   var eq = equipList('accessory').reduce(function(sum, cid){
     var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'xpPct') : 0);
   }, 0);
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'xpPct') : 0);
-  }, 0);
-  return 1 + (eq + relic + subjectBonusTotal('xpPct'))/100;
+  return 1 + (eq + subjectBonusTotal('xpPct'))/100;
 }
 function rpgLootBonus(){
   var hid = D.rpg.equip.helmet, h = itemById(hid);
-  var base = h ? itemStatValue(h, hid, 'lootPct') : 0;
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'lootPct') : 0);
-  }, 0);
-  return base + relic;
+  return h ? itemStatValue(h, hid, 'lootPct') : 0;
 }
 function rpgDmgReduction(){
   var bid = D.rpg.equip.boots, b = itemById(bid);
   var v = b ? itemStatValue(b, bid, 'dmgReduction') : 0;
-  var relic = equipList('relic').reduce(function(sum, rid){
-    var r = itemById(rid); return sum + (r ? itemStatValue(r, rid, 'dmgReduction') : 0);
-  }, 0);
-  return Math.min(80, v + relic);
+  return Math.min(80, v);
 }
 function rpgAward(ok, unsure, isWeak){
   var g, x;
@@ -2118,7 +2083,7 @@ function renderAdventure(){
   var lv = D.rpg.level, need = xpForLevel(lv), pct = Math.min(100, Math.round(D.rpg.xp/need*100));
   var atk = rpgAtk(), hp = rpgMaxHp(), lootB = rpgLootBonus(), dmgR = rpgDmgReduction();
   var goldB = Math.round((rpgGoldMult() - 1) * 100), xpB = Math.round((rpgXpMult() - 1) * 100);
-  var equippedCount = equipList('weapon').length + equipList('accessory').length + equipList('relic').length +
+  var equippedCount = equipList('weapon').length + equipList('accessory').length +
     (D.rpg.equip.armor ? 1 : 0) + (D.rpg.equip.helmet ? 1 : 0) + (D.rpg.equip.boots ? 1 : 0);
   var badgeCount = Array.isArray(D.rpg.badges) ? D.rpg.badges.length : 0;
   var due = BANK.filter(function(q){ return dueQ(q.id); }).length;
@@ -2151,7 +2116,7 @@ function renderAdventure(){
       infoBox('科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。') +
       '<div class="card">' + subjectAttrHTML() + '</div>') +
 
-    accSection('equip', '裝備欄', equippedCount + ' / 9', dollHTML(), true) +
+    accSection('equip', '裝備欄', equippedCount + ' / 7', dollHTML(), true) +
 
     accSection('shop', '商店', '',
       infoBox('稀有裝備（藍色以上）僅能從打怪掉落取得，點下方分類展開清單。') +
@@ -2234,8 +2199,6 @@ var DOLL_SLOTS = [
   { key:'accessory1', dataSlot:'accessory', idx:0,    label:'飾品一', icon:'💍' },
   { key:'accessory2', dataSlot:'accessory', idx:1,    label:'飾品二', icon:'💍' },
   { key:'boots',      dataSlot:'boots',     idx:null, label:'鞋子',   icon:'👢' },
-  { key:'relic1',     dataSlot:'relic',     idx:0,    label:'首領遺物一', icon:'🏆', relic:true },
-  { key:'relic2',     dataSlot:'relic',     idx:1,    label:'首領遺物二', icon:'🏆', relic:true },
 ];
 function dollSlotByKey(key){
   var found = null;
@@ -2270,7 +2233,7 @@ function dollHTML(){
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
   var detail = ADV_SLOT_OPEN
     ? slotDetailHTML(ADV_SLOT_OPEN)
-    : infoBox('點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，首領遺物欄有兩格、只能放首領專屬裝備（其餘一般裝備不會佔用遺物欄，兩者互不影響）。邊框顏色代表裝備稀有度，右下角圓點顏色代表強化階段。');
+    : infoBox('點選人物身上的裝備位置，即可查看、強化或更換裝備。武器與飾品各有兩個欄位，可以同時裝備兩件；首領專屬神器也是裝在對應的一般欄位裡，跟其他裝備共用。邊框顏色代表裝備稀有度，右下角圓點顏色代表強化階段。');
   return body + detail;
 }
 function slotDetailHTML(key){
@@ -2280,8 +2243,7 @@ function slotDetailHTML(key){
   var id = getEquippedId(dataSlot, idx), it = itemById(id);
   var owned = D.rpg.inv.filter(function(iid){
     var i = itemById(iid);
-    if (!i || isEquipped(iid)) return false;
-    return s.relic ? !!i.bossExclusive : (i.slot === dataSlot);
+    return i && i.slot === dataSlot && !isEquipped(iid);
   });
   var html = '<div class="dollDetail">';
   if (it){
@@ -2407,7 +2369,7 @@ function bossLogHTML(){
         '</div>';
       }).join('') + '</div>'
     : '';
-  return infoBox('每個考科（含錯題複習池）都有一位專屬首領，首次擊敗會固定掉落該科的專屬神器（紅框，加成遠高於一般裝備，但強化成本也更高，且無法分解）。專屬神器只能裝備在「首領遺物欄」（2格），不會佔用一般裝備欄位，但也因此就算集滿全部神器，同時間最多只能裝備2件，需要自行取捨。遭遇機率隨連勝提升。') +
+  return infoBox('每個考科（含錯題複習池）都有一位專屬首領，首次擊敗會固定掉落該科的專屬神器（紅框，加成遠高於一般裝備，但強化成本也更高，且無法分解）。專屬神器跟一般裝備共用同一個部位欄位（例如武器類神器會出現在武器一／武器二裡），沒有另外佔用欄位。遭遇機率隨連勝提升。') +
     '<div class="bossGrid">' + grid + '</div>' + logHtml;
 }
 function challengeCardsHTML(){
@@ -2455,13 +2417,7 @@ function bindAdventureEvents(){
     b.onclick = function(){
       var id = b.dataset.equip, it = itemById(id);
       if (!it) return;
-      if (it.bossExclusive){
-        var rarr = D.rpg.equip.relic;
-        if (!Array.isArray(rarr)) rarr = D.rpg.equip.relic = [];
-        if (!rarr[0]) rarr[0] = id;
-        else if (rarr.length < RELIC_SLOTS && !rarr[1]) rarr[1] = id;
-        else rarr[0] = id; // 遺物欄都滿時，預設替換第一格
-      } else if (it.slot === 'weapon' || it.slot === 'accessory'){
+      if (it.slot === 'weapon' || it.slot === 'accessory'){
         var arr = D.rpg.equip[it.slot];
         if (!Array.isArray(arr)) arr = D.rpg.equip[it.slot] = [];
         if (!arr[0]) arr[0] = id;
@@ -2962,7 +2918,7 @@ $('#themeBtn').onclick = cycleTheme;
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll((savedBank && savedBank.length) ? savedBank : SEED.slice());
       if (!savedBank || !savedBank.length) saveBank();
-      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[], relic:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
+      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
     }
     save();
     applyTheme(D.settings.theme || 'auto');
