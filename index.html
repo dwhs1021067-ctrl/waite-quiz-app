@@ -401,6 +401,12 @@ h2.sec:first-child{margin-top:14px}
   position:absolute;bottom:-2px;right:-2px;width:13px;height:13px;border-radius:50%;
   border:2px solid var(--bg);box-shadow:0 0 0 1px rgba(0,0,0,.15);
 }
+.dollEvolveBadge{
+  position:absolute;top:-6px;left:-6px;font-size:14px;
+  filter:drop-shadow(0 0 3px rgba(224,168,46,.8));
+}
+.btn.evolve{background:linear-gradient(135deg,#E0472E,#E0A82E);color:#fff;border:none}
+.btn.evolve:disabled{background:var(--line-2);color:var(--tx-3)}
 .dollEmpty{opacity:.35;filter:grayscale(1)}
 .dollSlot[data-doll="helmet"]{top:0;left:50%;transform:translateX(-50%)}
 .dollSlot[data-doll="weapon1"]{top:72px;left:0}
@@ -508,6 +514,14 @@ h2.sec:first-child{margin-top:14px}
 .chName{font-size:15px;font-weight:700}
 .chCard .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 14px;font-size:13px;border-radius:8px;white-space:nowrap}
 
+.careerGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.careerCell{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:12px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.careerIcon{font-size:20px}
+.careerVal{font-family:var(--num);font-size:18px;font-weight:700}
+.careerLab{font-size:10.5px;color:var(--tx-2);line-height:1.3}
 .attrRow{display:flex;align-items:center;gap:11px;padding:10px 13px}
 .attrRow + .attrRow{border-top:1px solid var(--line-2)}
 .attrIcon{
@@ -787,7 +801,7 @@ var DEF_RPG = {
   level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
   winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[],
-  enchantStone:0, breakStone:0
+  enchantStone:0, breakStone:0, evolved:{}
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
 function migrateEquip(eq){
@@ -950,6 +964,8 @@ var ACHIEVEMENTS = [
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
   { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
   { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
+  { id:'evolveFirst',name:'神器覺醒',desc:'讓任一首領神器進化',      icon:'✨', reward:{gold:200}, check:function(c){ return c.evolvedCount >= 1; } },
+  { id:'evolveAll',  name:'覺醒之王',desc:'讓全部首領神器進化',      icon:'🌠', reward:{gold:600}, check:function(c){ return c.evolvedCount >= c.mythicTotal; } },
   { id:'gold500',  name:'白手起家', desc:'累計賺取 500 金幣',         icon:'💰', reward:{gold:0},   check:function(c){ return c.lifetimeGold >= 500; } },
 ];
 function computeTotalCorrect(){
@@ -971,6 +987,7 @@ function achievementContext(){
     maxEnchant: enchLv.length ? Math.max.apply(null, enchLv) : 0,
     hasLegendary: D.rpg.inv.some(function(id){ var it = itemById(id); return it && it.rarity === 'legendary'; }),
     mythicCount: D.rpg.inv.filter(function(id){ var it = itemById(id); return it && it.rarity === 'mythic'; }).length,
+    evolvedCount: Object.keys(D.rpg.evolved || {}).filter(function(id){ return D.rpg.evolved[id] && D.rpg.inv.indexOf(id) >= 0; }).length,
     mythicTotal: ITEMS.filter(function(i){ return i.rarity === 'mythic'; }).length,
   };
 }
@@ -1058,7 +1075,14 @@ function itemStatValue(it, id, key){
   var base = it[key];
   if (!base) return 0;
   var lv = enchantLevel(id);
-  return Math.round(base * (1 + lv*0.12));
+  var v = base * (1 + lv*0.12);
+  if (D.rpg.evolved && D.rpg.evolved[id]) v *= 1.15;
+  return Math.round(v);
+}
+var EVOLVE_CRYSTAL_COST = 3;
+var EVOLVE_GOLD_COST = 2000;
+function itemDisplayName(it, id){
+  return it.name + (D.rpg.evolved && D.rpg.evolved[id] ? '・真' : '');
 }
 function equipList(dataSlot){
   var v = D.rpg.equip[dataSlot];
@@ -1989,6 +2013,7 @@ function doImport(rawText){
     D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
     D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {}));
     D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
+    D.rpg.evolved = Object.assign({}, (obj.rpg && obj.rpg.evolved) || {});
     D.rpg.bossKills = Object.assign({}, (obj.rpg && obj.rpg.bossKills) || {});
     D.rpg.bossLog = (obj.rpg && Array.isArray(obj.rpg.bossLog)) ? obj.rpg.bossLog.slice() : [];
     if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
@@ -2112,6 +2137,8 @@ function renderAdventure(){
 
     accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
 
+    accSection('career', '生涯紀錄', '', careerHTML()) +
+
     accSection('subject', '分科屬性', '', 
       infoBox('科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。') +
       '<div class="card">' + subjectAttrHTML() + '</div>') +
@@ -2150,6 +2177,28 @@ function bonusLabel(cfg, stars){
   if (cfg.effect === 'goldPct') return '+' + v + '% 金幣';
   if (cfg.effect === 'xpPct') return '+' + v + '% 經驗';
   return '';
+}
+function careerHTML(){
+  var totalCorrect = computeTotalCorrect();
+  var cells = [
+    ['📝', '累計答對題數', totalCorrect],
+    ['⚔️', '累計擊敗怪物', D.rpg.wins || 0],
+    ['🔥', '歷史最高連勝', D.rpg.bestWinStreak || 0],
+    ['📅', '累計使用天數', D.days.length],
+    ['🗓️', '目前連續天數', streak()],
+    ['💰', '累計獲得金幣', D.rpg.lifetimeGold || 0],
+  ];
+  var grid = '<div class="careerGrid">' + cells.map(function(c){
+    return '<div class="careerCell"><span class="careerIcon">' + c[0] + '</span>' +
+      '<span class="careerVal">' + c[2] + '</span><span class="careerLab">' + c[1] + '</span></div>';
+  }).join('') + '</div>';
+  var subjectRows = EXAM_NAMES.map(function(name){
+    var m = subjectMastery(name);
+    if (!m.total) return '';
+    return '<div class="row"><div><div class="lab">' + esc(name) + '</div>' +
+      '<div class="hint">已熟練 ' + m.mature + ' / ' + m.total + ' 題</div></div></div>';
+  }).join('');
+  return grid + (subjectRows ? '<p class="hint" style="margin:12px 0 6px">各科熟練進度：</p><div class="card">' + subjectRows + '</div>' : '');
 }
 function subjectAttrHTML(){
   var rows = Object.keys(SUBJECT_ATTR).map(function(name){
@@ -2224,10 +2273,12 @@ function dollHTML(){
     var id = getEquippedId(s.dataSlot, s.idx), it = itemById(id);
     var filled = !!it, active = ADV_SLOT_OPEN === s.key;
     var lv = filled ? enchantLevel(id) : 0;
+    var evolved = filled && D.rpg.evolved && D.rpg.evolved[id];
     var tierDot = (filled && lv) ? '<span class="dollTierDot" style="background:' + enchantTierFor(lv).color + '" title="' + enchantTierFor(lv).name + '（+' + lv + '）"></span>' : '';
+    var evolveBadge = evolved ? '<span class="dollEvolveBadge" title="已進化">✨</span>' : '';
     return '<button class="dollSlot' + (filled ? ' filled rarity-' + it.rarity : '') + (active ? ' active' : '') + '"' +
       ' data-doll="' + s.key + '" aria-label="' + s.label + '">' +
-      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') + tierDot +
+      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') + tierDot + evolveBadge +
     '</button>';
   }).join('');
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
@@ -2253,7 +2304,15 @@ function slotDetailHTML(key){
     var stones = D.rpg.enchantStone || 0, crystals = D.rpg.breakStone || 0;
     var noteHtml = '', actionsHtml;
     if (maxed){
-      actionsHtml = '<span class="owned">已滿級</span>';
+      var evolved = !!(D.rpg.evolved && D.rpg.evolved[id]);
+      if (it.rarity === 'mythic' && !evolved){
+        var canEvolve = crystals >= EVOLVE_CRYSTAL_COST && D.rpg.gold >= EVOLVE_GOLD_COST;
+        noteHtml = '<div class="breakNote">✨ 已達最高等級，消耗 <b>' + EVOLVE_CRYSTAL_COST + '顆突破結晶🔮</b> 與 <b>' + EVOLVE_GOLD_COST + '金幣</b> 可以進化為真裝，額外提升15%數值並改變外觀' +
+          (crystals < EVOLVE_CRYSTAL_COST ? '（目前只有 ' + crystals + ' 顆突破結晶）' : '') + '</div>';
+        actionsHtml = '<button class="btn tiny evolve" data-evolve="' + id + '"' + (canEvolve ? '' : ' disabled') + '>✨ 進化 💰' + EVOLVE_GOLD_COST + '</button>';
+      } else {
+        actionsHtml = '<span class="owned">' + (evolved ? '✨ 已進化・已滿級' : '已滿級') + '</span>';
+      }
     } else if (needsBreak){
       var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
       var canBreakCrystal = crystals >= 2 && D.rpg.gold >= cost;
@@ -2270,7 +2329,7 @@ function slotDetailHTML(key){
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
         '<span class="itIcon">' + it.icon + '</span>' +
-        '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+        '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(it, id)) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
         '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
         '<button class="btn sec tiny" data-doll-unequip="' + key + '">卸下</button>' +
       '</div>' +
@@ -2286,7 +2345,7 @@ function slotDetailHTML(key){
         var i = itemById(iid), l = enchantLevel(iid);
         return '<div class="itRow rarity-' + i.rarity + '">' +
           '<span class="itIcon">' + i.icon + '</span>' +
-          '<span class="itInfo"><span class="itName">' + esc(i.name) + enchBadge(l) + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+          '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(i, iid)) + enchBadge(l) + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
           '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
           '<button class="btn tiny sec" data-equip-to="' + key + '|' + iid + '">裝備</button>' +
         '</div>';
@@ -2328,7 +2387,7 @@ function invRowHTML(id){
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
     '<div class="itTop">' +
       '<span class="itIcon">' + it.icon + '</span>' +
-      '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+      '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(it, id)) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
       '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
       '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
     '</div>' +
@@ -2577,6 +2636,26 @@ function bindAdventureEvents(){
       var newTier = enchantTierFor(lv + 1);
       setTimeout(function(){
         alert('⚡ 突破成功！\n「' + it.name + '」躍升至【' + newTier.name + '】階段（+' + (lv + 1) + '）！');
+      }, 50);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-evolve]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.evolve, it = itemById(id);
+      if (!it || it.rarity !== 'mythic') return;
+      var lv = enchantLevel(id);
+      if (lv < ENCHANT_MAX) return;
+      if (D.rpg.evolved && D.rpg.evolved[id]) return;
+      if ((D.rpg.breakStone || 0) < EVOLVE_CRYSTAL_COST || D.rpg.gold < EVOLVE_GOLD_COST) return;
+      var msg = '消耗 ' + EVOLVE_CRYSTAL_COST + ' 顆突破結晶與 ' + EVOLVE_GOLD_COST + ' 金幣，讓「' + it.name + '」進化嗎？進化後數值再提升15%，且無法復原。';
+      if (!confirm(msg)) return;
+      D.rpg.breakStone -= EVOLVE_CRYSTAL_COST;
+      D.rpg.gold -= EVOLVE_GOLD_COST;
+      if (!D.rpg.evolved) D.rpg.evolved = {};
+      D.rpg.evolved[id] = true;
+      save(); checkAchievements(); renderAdventureKeepScroll();
+      setTimeout(function(){
+        alert('✨ 進化成功！\n「' + it.name + '」蛻變為「' + itemDisplayName(it, id) + '」！');
       }, 50);
     };
   });
@@ -2910,6 +2989,7 @@ $('#themeBtn').onclick = cycleTheme;
       D.rpg = Object.assign({}, DEF_RPG, saved.rpg || {});
       D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {}));
       D.rpg.enchant = Object.assign({}, (saved.rpg && saved.rpg.enchant) || {});
+      D.rpg.evolved = Object.assign({}, (saved.rpg && saved.rpg.evolved) || {});
       D.rpg.bossKills = Object.assign({}, (saved.rpg && saved.rpg.bossKills) || {});
       D.rpg.bossLog = (saved.rpg && Array.isArray(saved.rpg.bossLog)) ? saved.rpg.bossLog.slice() : [];
       if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
@@ -2918,7 +2998,7 @@ $('#themeBtn').onclick = cycleTheme;
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll((savedBank && savedBank.length) ? savedBank : SEED.slice());
       if (!savedBank || !savedBank.length) saveBank();
-      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
+      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, evolved:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
     }
     save();
     applyTheme(D.settings.theme || 'auto');
