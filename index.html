@@ -900,13 +900,18 @@ function miniMonsterFor(){
     name: MINI_MONSTER_NAMES[Math.floor(Math.random()*MINI_MONSTER_NAMES.length)]
   };
 }
-var ENCHANT_MAX = 12;
-var BREAKTHROUGH_LEVELS = [4, 8]; // 突破關卡：+4→+5、+8→+9 需消耗2件同部位裝備作為突破素材
+var ENCHANT_MAX = 20;
+var BREAKTHROUGH_LEVELS = [4, 8, 12, 16]; // 突破關卡：+4→+5、+8→+9、+12→+13、+16→+17 需消耗同部位裝備或突破結晶作為素材
 var ENCHANT_TIERS = [
-  { min:0, max:4,  name:'精煉', color:'#9AA0A6' },
-  { min:5, max:8,  name:'淬鍊', color:'#4C8DFF' },
-  { min:9, max:12, name:'神化', color:'#E0472E' },
+  { min:0,  max:4,  name:'精煉', color:'#9AA0A6' },
+  { min:5,  max:8,  name:'淬鍊', color:'#4C8DFF' },
+  { min:9,  max:12, name:'神化', color:'#E0472E' },
+  { min:13, max:20, name:'天啟', color:'#FFB300' },
 ];
+/* +12 之後的突破關卡（進入「天啟」階段）需求提升：3件同部位裝備或4顆突破結晶，反映後期投入更高 */
+function breakthroughRequirement(lv){
+  return lv >= 12 ? { mats:3, crystals:4 } : { mats:2, crystals:2 };
+}
 function enchantTierFor(lv){
   for (var i = 0; i < ENCHANT_TIERS.length; i++){
     if (lv >= ENCHANT_TIERS[i].min && lv <= ENCHANT_TIERS[i].max) return ENCHANT_TIERS[i];
@@ -965,6 +970,8 @@ var ACHIEVEMENTS = [
   { id:'maxEnchant',name:'鍛造大師',desc:'任一裝備突破至【淬鍊】階段（+5）',    icon:'🔨', reward:{gold:80},  check:function(c){ return c.maxEnchant >= 5; } },
   { id:'breakEnchant',name:'突破極限',desc:'任一裝備突破至【神化】階段（+9）', icon:'⚡', reward:{gold:150}, check:function(c){ return c.maxEnchant >= 9; } },
   { id:'fullEnchant',name:'鍛造宗師',desc:'任一裝備強化至【神化】滿級（+12）', icon:'🌟', reward:{gold:250}, check:function(c){ return c.maxEnchant >= 12; } },
+  { id:'revelation',name:'天啟降臨',desc:'任一裝備突破至【天啟】階段（+13）', icon:'✨', reward:{gold:300}, check:function(c){ return c.maxEnchant >= 13; } },
+  { id:'revelationMax',name:'登峰造極',desc:'任一裝備強化至【天啟】滿級（+20）', icon:'🌈', reward:{gold:600}, check:function(c){ return c.maxEnchant >= 20; } },
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
   { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
   { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
@@ -2429,11 +2436,12 @@ function slotDetailHTML(key){
     if (maxed){
       actionsHtml = '<span class="owned">已滿級</span>';
     } else if (needsBreak){
-      var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
-      var canBreakCrystal = crystals >= 2 && D.rpg.gold >= cost;
+      var req = breakthroughRequirement(lv);
+      var canBreak = mats.length >= req.mats && D.rpg.gold >= cost;
+      var canBreakCrystal = crystals >= req.crystals && D.rpg.gold >= cost;
       var curTier = enchantTierFor(lv), nextTier = enchantTierFor(lv + 1);
-      noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>2件</b> 同部位裝備、或 <b>2顆突破結晶</b>🔮 作為突破素材，才能突破至【' + nextTier.name + '】階段' +
-        (mats.length < 2 ? '（目前有 ' + mats.length + ' 件可用裝備素材、' + crystals + ' 顆突破結晶）' : '') + '</div>';
+      noteHtml = '<div class="breakNote">🔒 已達【' + curTier.name + '】階段上限（+' + lv + '），需消耗 <b>' + req.mats + '件</b> 同部位裝備、或 <b>' + req.crystals + '顆突破結晶</b>🔮 作為突破素材，才能突破至【' + nextTier.name + '】階段' +
+        (mats.length < req.mats ? '（目前有 ' + mats.length + ' 件可用裝備素材、' + crystals + ' 顆突破結晶）' : '') + '</div>';
       actionsHtml = '<button class="btn tiny break" data-breakthrough="' + id + '"' + (canBreak ? '' : ' disabled') + '>⚡ 裝備突破 💰' + cost + '</button>' +
         '<button class="btn tiny sec break" data-breakthrough-crystal="' + id + '"' + (canBreakCrystal ? '' : ' disabled') + '>🔮 結晶突破 💰' + cost + '</button>';
     } else {
@@ -2713,13 +2721,14 @@ function bindAdventureEvents(){
       if (!it) return;
       var lv = enchantLevel(id);
       if (BREAKTHROUGH_LEVELS.indexOf(lv) < 0) return;
+      var req = breakthroughRequirement(lv);
       var mats = materialsFor(it.slot, id);
-      if (mats.length < 2) return;
+      if (mats.length < req.mats) return;
       var cost = enchantCost(it, id);
       if (D.rpg.gold < cost) return;
-      var used = mats.slice(0, 2);
+      var used = mats.slice(0, req.mats);
       var usedNames = used.map(function(mid){ return itemById(mid).name; }).join('、');
-      var msg = '突破需要消耗「' + usedNames + '」這2件同部位裝備（將會消失），並花費 ' + cost +
+      var msg = '突破需要消耗「' + usedNames + '」這' + req.mats + '件同部位裝備（將會消失），並花費 ' + cost +
         ' 金幣，把「' + it.name + '」突破強化到 +' + (lv + 1) + '？';
       if (!confirm(msg)) return;
       D.rpg.inv = D.rpg.inv.filter(function(iid){ return used.indexOf(iid) < 0; });
@@ -2741,13 +2750,14 @@ function bindAdventureEvents(){
       if (!it) return;
       var lv = enchantLevel(id);
       if (BREAKTHROUGH_LEVELS.indexOf(lv) < 0) return;
-      if ((D.rpg.breakStone || 0) < 2) return;
+      var req = breakthroughRequirement(lv);
+      if ((D.rpg.breakStone || 0) < req.crystals) return;
       var cost = enchantCost(it, id);
       if (D.rpg.gold < cost) return;
-      var msg = '突破需要消耗 <b>2顆突破結晶</b>🔮，並花費 ' + cost +
+      var msg = '突破需要消耗 <b>' + req.crystals + '顆突破結晶</b>🔮，並花費 ' + cost +
         ' 金幣，把「' + it.name + '」突破強化到 +' + (lv + 1) + '？';
       if (!confirm(msg.replace(/<\/?b>/g,''))) return;
-      D.rpg.breakStone -= 2;
+      D.rpg.breakStone -= req.crystals;
       D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
