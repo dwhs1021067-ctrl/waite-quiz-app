@@ -1966,6 +1966,14 @@ function renderStats(){
       '<span class="r">' + right + '</span></div>' +
       '<div class="rail"><i style="width:' + w.toFixed(0) + '%"></i></div></div>';
   }
+  /* 各科表現：把「正確率」跟「答題速度」合併成同一列，不用分兩個區塊各看一次同樣的科目清單 */
+  function combinedBar(x){
+    var cls = x.acc < 60 ? ' w' : (x.acc >= 85 ? ' s' : '');
+    return '<div class="bar' + cls + '"><div class="t"><span>' + esc(x.k) + '</span>' +
+      '<span class="r">' + x.acc + '%　' + x.right + '/' + x.seen + '</span></div>' +
+      '<div class="rail"><i style="width:' + x.acc + '%"></i></div>' +
+      '<div class="hint" style="margin-top:6px">⏱ 平均每題 ' + secs(x.ms/x.seen) + '</div></div>';
+  }
 
   var bySub = group(function(q){ return q.exam; }).sort(function(a,b){ return a.acc - b.acc; });
   var byTop = group(function(q){ return q.part ? (q.part + '・' + (q.topic || '其他')) : q.topic; })
@@ -1993,6 +2001,22 @@ function renderStats(){
       }).join('') + '</div>'
     : '<div class="card" style="padding:14px 15px"><p class="hint" style="margin:0">目前還沒有偵測到明顯的弱點聚類（樣本數不足或整體表現穩定），持續作答後這裡會列出最需要加強的主題。</p></div>';
 
+  var perfHTML = '<div class="card">' + bySub.map(combinedBar).join('') + '</div>' +
+    '<p class="hint" style="padding:0 4px;margin:9px 0 0">速度僅供參考：三等選擇題每題約 60–90 秒是合理節奏，滿格對應 2 分鐘。</p>';
+
+  var topicsHTML = byTop.length
+    ? '<div class="card">' + byTop.slice(0, 15).map(function(x){ return bar(x, true); }).join('') + '</div>' +
+      (byTop.length > 15 ? '<p class="hint" style="padding:0 4px;margin:9px 0 0">僅顯示正確率最低的前 15 項，共 ' + byTop.length + ' 個主題已有作答紀錄。</p>' : '')
+    : '<p class="hint" style="margin:0 2px">主題資料還不夠多，多作答幾題後這裡會顯示更細的子科目/主題強弱分析。</p>';
+
+  var coverageHTML = '<div class="card">' + EXAM_NAMES.filter(function(s){ return countBy(function(q){ return q.exam; }, s); }).map(function(s){
+    var all = BANK.filter(function(q){ return q.exam === s; }).length;
+    var done = BANK.filter(function(q){ return q.exam === s && seenQ(q.id); }).length;
+    return '<div class="bar"><div class="t"><span>' + esc(s) + '</span><span class="r">' + done + ' / ' + all + '</span></div>' +
+      '<div class="rail"><i style="width:' + (done/Math.max(1,all)*100).toFixed(0) + '%"></i></div></div>';
+  }).join('') + '</div>';
+  var coveragePct = Math.round(seen.length / Math.max(1, BANK.length) * 100);
+
   $('#s-stats').innerHTML =
     '<h2 class="sec">總覽</h2>' +
     '<div class="kpis">' +
@@ -2002,28 +2026,20 @@ function renderStats(){
       '<div class="kpi"><div class="v">' + streak() + '</div><div class="l">連續練習天數</div></div>' +
     '</div>' +
 
-    '<h2 class="sec">🔍 弱點診斷</h2>' + weakHTML +
+    accSection('weak', '🔍 弱點診斷', weakTopics.length ? (weakTopics.length + ' 項需留意') : '', weakHTML, true, 'stats') +
+    accSection('perf', '📊 各科表現', '正確率＋速度', perfHTML, true, 'stats') +
+    accSection('topics', '🧩 子科目與主題細項', byTop.length ? (byTop.length + ' 個主題') : '', topicsHTML, false, 'stats') +
+    accSection('coverage', '📚 題庫涵蓋率', coveragePct + '%', coverageHTML, false, 'stats');
 
-    '<h2 class="sec">各科正確率（由弱到強）</h2>' +
-    '<div class="card">' + bySub.map(function(x){ return bar(x, true); }).join('') + '</div>' +
-
-    (byTop.length ? '<h2 class="sec">子科目與主題強弱</h2><div class="card">' +
-      byTop.slice(0,10).map(function(x){ return bar(x, true); }).join('') + '</div>' : '') +
-
-    '<h2 class="sec">答題速度</h2>' +
-    '<div class="card">' +
-      bySub.slice().sort(function(a,b){ return b.ms/b.seen - a.ms/a.seen; })
-        .map(function(x){ return bar(x, false); }).join('') +
-    '</div>' +
-    '<p class="hint" style="padding:0 4px;margin:9px 0 0">滿格為 2 分鐘。三等選擇題每題約 60–90 秒是合理節奏。</p>' +
-
-    '<h2 class="sec">題庫涵蓋率</h2>' +
-    '<div class="card">' + EXAM_NAMES.filter(function(s){ return countBy(function(q){ return q.exam; }, s); }).map(function(s){
-      var all = BANK.filter(function(q){ return q.exam === s; }).length;
-      var done = BANK.filter(function(q){ return q.exam === s && seenQ(q.id); }).length;
-      return '<div class="bar"><div class="t"><span>' + esc(s) + '</span><span class="r">' + done + ' / ' + all + '</span></div>' +
-        '<div class="rail"><i style="width:' + (done/Math.max(1,all)*100).toFixed(0) + '%"></i></div></div>';
-    }).join('') + '</div>';
+  bindStatsEvents();
+}
+function renderStatsKeepScroll(){
+  var y = window.scrollY;
+  renderStats();
+  window.scrollTo(0, y);
+}
+function bindStatsEvents(){
+  bindAccToggles();
 }
 
 function streak(){
@@ -2233,16 +2249,20 @@ function cycleTheme(){
 /* ===================== 冒險分頁 ===================== */
 var SHOW_AVATAR_PICKER = false;
 var ADV_OPEN = { challenge:true, equip:true };
+var STATS_OPEN = { weak:true, perf:true };
+var ACC_STORES = { adv:ADV_OPEN, stats:STATS_OPEN };
 var ADV_SLOT_OPEN = null;
 function examIcon(name){
   var map = { '國文':'📜', '綜合法政知識':'⚖️', '外國文':'🌐',
     '國際公法':'🏛️', '國際關係與近代外交史':'🗺️', '國際經濟':'💹' };
   return map[name] || '👾';
 }
-function accSection(key, title, sub, bodyHtml, defaultOpen){
-  var open = ADV_OPEN.hasOwnProperty(key) ? ADV_OPEN[key] : !!defaultOpen;
+function accSection(key, title, sub, bodyHtml, defaultOpen, storeName){
+  storeName = storeName || 'adv';
+  var store = ACC_STORES[storeName];
+  var open = store.hasOwnProperty(key) ? store[key] : !!defaultOpen;
   return '<div class="accSection">' +
-    '<button class="accHead" data-acc="' + key + '" aria-expanded="' + open + '">' +
+    '<button class="accHead" data-acc="' + key + '" data-acc-store="' + storeName + '" aria-expanded="' + open + '">' +
       '<span class="accTitle">' + esc(title) + '</span>' +
       (sub ? '<span class="accSub">' + esc(sub) + '</span>' : '') +
       '<span class="accChevron">' + (open ? '▾' : '▸') + '</span>' +
@@ -2579,15 +2599,20 @@ function renderAdventureKeepScroll(){
   renderAdventure();
   window.scrollTo(0, y);
 }
-function bindAdventureEvents(){
+function bindAccToggles(){
   Array.prototype.forEach.call(document.querySelectorAll('[data-acc]'), function(b){
     b.onclick = function(){
-      var key = b.dataset.acc;
-      var cur = ADV_OPEN.hasOwnProperty(key) ? ADV_OPEN[key] : false;
-      ADV_OPEN[key] = !cur;
-      renderAdventureKeepScroll();
+      var key = b.dataset.acc, storeName = b.dataset.accStore || 'adv';
+      var store = ACC_STORES[storeName];
+      var cur = store.hasOwnProperty(key) ? store[key] : false;
+      store[key] = !cur;
+      if (storeName === 'stats') renderStatsKeepScroll();
+      else renderAdventureKeepScroll();
     };
   });
+}
+function bindAdventureEvents(){
+  bindAccToggles();
   Array.prototype.forEach.call(document.querySelectorAll('[data-buy]'), function(b){
     b.onclick = function(){
       var id = b.dataset.buy, it = itemById(id);
