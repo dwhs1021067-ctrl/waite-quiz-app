@@ -401,12 +401,6 @@ h2.sec:first-child{margin-top:14px}
   position:absolute;bottom:-2px;right:-2px;width:13px;height:13px;border-radius:50%;
   border:2px solid var(--bg);box-shadow:0 0 0 1px rgba(0,0,0,.15);
 }
-.dollEvolveBadge{
-  position:absolute;top:-6px;left:-6px;font-size:14px;
-  filter:drop-shadow(0 0 3px rgba(224,168,46,.8));
-}
-.btn.evolve{background:linear-gradient(135deg,#E0472E,#E0A82E);color:#fff;border:none}
-.btn.evolve:disabled{background:var(--line-2);color:var(--tx-3)}
 .dollEmpty{opacity:.35;filter:grayscale(1)}
 .dollSlot[data-doll="helmet"]{top:0;left:50%;transform:translateX(-50%)}
 .dollSlot[data-doll="weapon1"]{top:72px;left:0}
@@ -514,14 +508,6 @@ h2.sec:first-child{margin-top:14px}
 .chName{font-size:15px;font-weight:700}
 .chCard .btn{display:inline-block;width:auto;flex:none;margin-top:0;padding:9px 14px;font-size:13px;border-radius:8px;white-space:nowrap}
 
-.careerGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.careerCell{
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:12px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;
-}
-.careerIcon{font-size:20px}
-.careerVal{font-family:var(--num);font-size:18px;font-weight:700}
-.careerLab{font-size:10.5px;color:var(--tx-2);line-height:1.3}
 .attrRow{display:flex;align-items:center;gap:11px;padding:10px 13px}
 .attrRow + .attrRow{border-top:1px solid var(--line-2)}
 .attrIcon{
@@ -801,7 +787,9 @@ var DEF_RPG = {
   level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
   winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[],
-  enchantStone:0, breakStone:0, evolved:{}
+  enchantStone:0, breakStone:0,
+  daily:null, quests:null, dailyQuestStreak:0, bestDailyQuestStreak:0, lastQuestBonusDate:null,
+  tower:{ best:0 }
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
 function migrateEquip(eq){
@@ -964,9 +952,11 @@ var ACHIEVEMENTS = [
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
   { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
   { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
-  { id:'evolveFirst',name:'神器覺醒',desc:'讓任一首領神器進化',      icon:'✨', reward:{gold:200}, check:function(c){ return c.evolvedCount >= 1; } },
-  { id:'evolveAll',  name:'覺醒之王',desc:'讓全部首領神器進化',      icon:'🌠', reward:{gold:600}, check:function(c){ return c.evolvedCount >= c.mythicTotal; } },
   { id:'gold500',  name:'白手起家', desc:'累計賺取 500 金幣',         icon:'💰', reward:{gold:0},   check:function(c){ return c.lifetimeGold >= 500; } },
+  { id:'tower10',  name:'塔行者',   desc:'試煉之塔挑戰達第 10 層',    icon:'🗼', reward:{gold:60},  check:function(c){ return c.towerBest >= 10; } },
+  { id:'tower25',  name:'登塔高手', desc:'試煉之塔挑戰達第 25 層',    icon:'🏯', reward:{gold:150}, check:function(c){ return c.towerBest >= 25; } },
+  { id:'tower50',  name:'塔頂霸者', desc:'試煉之塔挑戰達第 50 層',    icon:'👑', reward:{gold:350}, check:function(c){ return c.towerBest >= 50; } },
+  { id:'questStreak7', name:'勤勉持恆', desc:'連續完成每日任務 7 天', icon:'📆', reward:{gold:80},  check:function(c){ return c.questStreak >= 7; } },
 ];
 function computeTotalCorrect(){
   var sum = 0;
@@ -987,8 +977,9 @@ function achievementContext(){
     maxEnchant: enchLv.length ? Math.max.apply(null, enchLv) : 0,
     hasLegendary: D.rpg.inv.some(function(id){ var it = itemById(id); return it && it.rarity === 'legendary'; }),
     mythicCount: D.rpg.inv.filter(function(id){ var it = itemById(id); return it && it.rarity === 'mythic'; }).length,
-    evolvedCount: Object.keys(D.rpg.evolved || {}).filter(function(id){ return D.rpg.evolved[id] && D.rpg.inv.indexOf(id) >= 0; }).length,
     mythicTotal: ITEMS.filter(function(i){ return i.rarity === 'mythic'; }).length,
+    towerBest: (D.rpg.tower && D.rpg.tower.best) || 0,
+    questStreak: D.rpg.dailyQuestStreak || 0,
   };
 }
 function checkAchievements(){
@@ -1075,14 +1066,7 @@ function itemStatValue(it, id, key){
   var base = it[key];
   if (!base) return 0;
   var lv = enchantLevel(id);
-  var v = base * (1 + lv*0.12);
-  if (D.rpg.evolved && D.rpg.evolved[id]) v *= 1.15;
-  return Math.round(v);
-}
-var EVOLVE_CRYSTAL_COST = 3;
-var EVOLVE_GOLD_COST = 2000;
-function itemDisplayName(it, id){
-  return it.name + (D.rpg.evolved && D.rpg.evolved[id] ? '・真' : '');
+  return Math.round(base * (1 + lv*0.12));
 }
 function equipList(dataSlot){
   var v = D.rpg.equip[dataSlot];
@@ -1129,6 +1113,110 @@ function rpgDmgReduction(){
   var v = b ? itemStatValue(b, bid, 'dmgReduction') : 0;
   return Math.min(80, v);
 }
+/* ===================== RPG：每日任務 ===================== */
+/* 每日統計：答題數、答對數、打怪勝場、單場最高連擊、複習題數、強化次數——每天自動歸零 */
+function ensureDaily(){
+  if (!D.rpg.daily || D.rpg.daily.date !== today()){
+    D.rpg.daily = { date:today(), answered:0, correct:0, wins:0, comboMax:0, reviewed:0, enchants:0 };
+  }
+  return D.rpg.daily;
+}
+function trackDaily(key, amt){
+  var d = ensureDaily();
+  d[key] = (d[key] || 0) + (amt == null ? 1 : amt);
+  return d;
+}
+function trackDailyMax(key, val){
+  var d = ensureDaily();
+  if (val > (d[key] || 0)) d[key] = val;
+  return d;
+}
+var QUEST_POOL = [
+  { id:'answer10', icon:'✏️', name:'今日作答 10 題',        statKey:'answered', target:10, reward:{ gold:20, stone:1 } },
+  { id:'answer20', icon:'📖', name:'今日作答 20 題',        statKey:'answered', target:20, reward:{ gold:35, stone:1 } },
+  { id:'correct8', icon:'✅', name:'今日答對 8 題',          statKey:'correct',  target:8,  reward:{ gold:25 } },
+  { id:'correct15',icon:'🎯', name:'今日答對 15 題',         statKey:'correct',  target:15, reward:{ gold:45, stone:1 } },
+  { id:'win2',     icon:'⚔️', name:'冒險頁打贏 2 場戰鬥',    statKey:'wins',     target:2,  reward:{ gold:30, brk:1 } },
+  { id:'win4',     icon:'🗡️', name:'冒險頁打贏 4 場戰鬥',    statKey:'wins',     target:4,  reward:{ gold:60, brk:1 } },
+  { id:'combo5',   icon:'🔥', name:'單場連續答對 5 題',      statKey:'comboMax', target:5,  reward:{ gold:20 } },
+  { id:'combo10',  icon:'💥', name:'單場連續答對 10 題',     statKey:'comboMax', target:10, reward:{ gold:40, stone:1 } },
+  { id:'review5',  icon:'🔁', name:'複習 5 題舊題',          statKey:'reviewed', target:5,  reward:{ gold:20, stone:1 } },
+  { id:'enchant1', icon:'🔨', name:'強化裝備 1 次',          statKey:'enchants', target:1,  reward:{ gold:15 } },
+];
+function questDef(id){ return QUEST_POOL.filter(function(q){ return q.id === id; })[0]; }
+function questProgress(id){
+  var def = questDef(id); if (!def) return 0;
+  return ensureDaily()[def.statKey] || 0;
+}
+/* 每天首次進入時，從任務池隨機抽 3 項；同一天內固定不變 */
+function ensureDailyQuests(){
+  ensureDaily();
+  if (!D.rpg.quests || D.rpg.quests.date !== today()){
+    var pool = QUEST_POOL.slice();
+    pool.sort(function(){ return Math.random() - .5; });
+    var picked = pool.slice(0, 3).map(function(q){ return { id:q.id, claimed:false }; });
+    D.rpg.quests = { date:today(), list:picked, bonusClaimed:false };
+    save();
+  }
+}
+function claimQuest(id){
+  if (!D.rpg.quests) return false;
+  var entry = D.rpg.quests.list.filter(function(x){ return x.id === id; })[0];
+  var def = questDef(id);
+  if (!entry || !def || entry.claimed) return false;
+  if (questProgress(id) < def.target) return false;
+  entry.claimed = true;
+  if (def.reward.gold){ D.rpg.gold += def.reward.gold; D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + def.reward.gold; }
+  if (def.reward.stone) D.rpg.enchantStone = (D.rpg.enchantStone || 0) + def.reward.stone;
+  if (def.reward.brk)   D.rpg.breakStone   = (D.rpg.breakStone   || 0) + def.reward.brk;
+  maybeClaimQuestBonus();
+  save(); checkAchievements();
+  return true;
+}
+/* 三項每日任務全部領取後，額外發放獎勵並累積「連續完成天數」 */
+function maybeClaimQuestBonus(){
+  if (!D.rpg.quests || D.rpg.quests.bonusClaimed) return;
+  var allDone = D.rpg.quests.list.every(function(x){ return x.claimed; });
+  if (!allDone) return;
+  D.rpg.quests.bonusClaimed = true;
+  D.rpg.gold += 30; D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + 30;
+  D.rpg.enchantStone = (D.rpg.enchantStone || 0) + 1;
+  var yesterday = new Date(Date.now() - DAY).toISOString().slice(0,10);
+  D.rpg.dailyQuestStreak = (D.rpg.lastQuestBonusDate === yesterday) ? (D.rpg.dailyQuestStreak || 0) + 1 : 1;
+  D.rpg.lastQuestBonusDate = today();
+  if (D.rpg.dailyQuestStreak > (D.rpg.bestDailyQuestStreak || 0)) D.rpg.bestDailyQuestStreak = D.rpg.dailyQuestStreak;
+}
+function questsHTML(){
+  ensureDailyQuests();
+  var rows = D.rpg.quests.list.map(function(entry){
+    var def = questDef(entry.id);
+    var prog = Math.min(def.target, questProgress(entry.id));
+    var done = prog >= def.target;
+    var pct = Math.round(prog / def.target * 100);
+    var rw = [];
+    if (def.reward.gold) rw.push('+' + def.reward.gold + '💰');
+    if (def.reward.stone) rw.push('+' + def.reward.stone + '🔹');
+    if (def.reward.brk) rw.push('+' + def.reward.brk + '🔮');
+    return '<div class="bar' + (done && !entry.claimed ? ' s' : '') + '">' +
+      '<div class="t"><span>' + def.icon + ' ' + esc(def.name) + '</span>' +
+        '<span class="r">' + prog + ' / ' + def.target + '</span></div>' +
+      '<div class="rail"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="hint" style="margin-top:7px;display:flex;align-items:center;justify-content:space-between">' +
+        '<span>獎勵 ' + rw.join(' ') + '</span>' +
+        (entry.claimed
+          ? '<span style="color:var(--ok);font-weight:700">已領取 ✓</span>'
+          : (done ? '<button class="btn tiny" data-claim-quest="' + entry.id + '" style="margin-top:0">領取</button>' : '')) +
+      '</div></div>';
+  }).join('');
+  var allDone = D.rpg.quests.list.every(function(x){ return x.claimed; });
+  var bonusText = D.rpg.quests.bonusClaimed
+    ? '<p class="hint" style="margin:10px 2px 0;color:var(--ok)">🎉 今日任務全數完成，已發放額外獎勵（+30💰 +1🔹）！</p>'
+    : (allDone ? '<p class="hint" style="margin:10px 2px 0">三項都領取後會自動發放額外獎勵。</p>' : '');
+  var streakText = (D.rpg.dailyQuestStreak || 0) > 0
+    ? '<p class="hint" style="margin:9px 2px 0">🔥 連續完成每日任務 ' + D.rpg.dailyQuestStreak + ' 天</p>' : '';
+  return '<div class="card">' + rows + '</div>' + bonusText + streakText;
+}
+
 function rpgAward(ok, unsure, isWeak){
   var g, x;
   if (ok && !unsure){ g = Math.round((5 + D.rpg.level) * rpgGoldMult()); x = Math.round(8 * rpgXpMult()); }
@@ -1545,6 +1633,7 @@ function grade(q){
   var ok = S.pick === q.answer;
   var p = P(q.id);
   var priorLv = p.lv; // 弱點加成：記錄本次作答前的熟練度，判斷這是不是你的弱點題
+  var wasReviewed = p.seen > 0; // 每日任務用：本題先前已作答過，視為一次複習
   p.seen++; p.ms += spent; p.at = Date.now();
   if (ok) p.right++; else p.wrong++;
   if (S.unsure) p.unsure++;
@@ -1565,6 +1654,8 @@ function grade(q){
   if (S.lastStone) D.rpg.enchantStone = (D.rpg.enchantStone || 0) + S.lastStone;
   if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
   else { S.combo = 0; }
+  trackDaily('answered'); if (ok) trackDaily('correct'); if (wasReviewed) trackDaily('reviewed');
+  trackDailyMax('comboMax', S.combo || 0);
   save(); refreshBadge(); checkAchievements(); renderSingle();
 }
 
@@ -1994,7 +2085,8 @@ function renderBank(){
   $('#c2').onclick = function(){
     if (!confirm('題庫與所有進度都會刪除，回到初始範例題。確定嗎？')) return;
     BANK = normalizeAll(SEED.slice());
-    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET) };
+    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET),
+      rpg: Object.assign({}, DEF_RPG, { equip:{ weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[], tower:{ best:0 }, daily:null, quests:null }) };
     saveBank(); save(); refreshBadge(); renderBank(); renderDrill();
   };
 }
@@ -2013,11 +2105,14 @@ function doImport(rawText){
     D.rpg = Object.assign({}, DEF_RPG, obj.rpg || {});
     D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (obj.rpg && obj.rpg.equip) || {}));
     D.rpg.enchant = Object.assign({}, (obj.rpg && obj.rpg.enchant) || {});
-    D.rpg.evolved = Object.assign({}, (obj.rpg && obj.rpg.evolved) || {});
     D.rpg.bossKills = Object.assign({}, (obj.rpg && obj.rpg.bossKills) || {});
     D.rpg.bossLog = (obj.rpg && Array.isArray(obj.rpg.bossLog)) ? obj.rpg.bossLog.slice() : [];
     if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
     D.rpg.badges = (obj.rpg && Array.isArray(obj.rpg.badges)) ? obj.rpg.badges.slice() : [];
+    D.rpg.tower = Object.assign({ best:0 }, (obj.rpg && obj.rpg.tower) || {});
+    D.rpg.daily = (obj.rpg && obj.rpg.daily) ? Object.assign({}, obj.rpg.daily) : null;
+    D.rpg.quests = (obj.rpg && obj.rpg.quests) ? Object.assign({}, obj.rpg.quests, { list:(obj.rpg.quests.list || []).slice() }) : null;
+    ensureDailyQuests();
     saveBank(); save(); refreshBadge(); checkAchievements(); renderDrill();
     m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄' +
       (obj.rpg ? '與冒險頁進度' : '') + '一併回復。' +
@@ -2104,6 +2199,7 @@ function accSection(key, title, sub, bodyHtml, defaultOpen){
 
 function renderAdventure(){
   if (S && S.mode === 'battle'){ renderBattle(); return; }
+  ensureDailyQuests();
 
   var lv = D.rpg.level, need = xpForLevel(lv), pct = Math.min(100, Math.round(D.rpg.xp/need*100));
   var atk = rpgAtk(), hp = rpgMaxHp(), lootB = rpgLootBonus(), dmgR = rpgDmgReduction();
@@ -2135,9 +2231,13 @@ function renderAdventure(){
       '<span title="打怪勝利才會掉，怪物等級越高機率越高">🔮 突破結晶 ' + (D.rpg.breakStone || 0) + '</span>' +
     '</div>' +
 
-    accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
+    accSection('quests', '每日任務',
+      D.rpg.quests.list.filter(function(x){ return x.claimed; }).length + ' / ' + D.rpg.quests.list.length,
+      questsHTML(), true) +
 
-    accSection('career', '生涯紀錄', '', careerHTML()) +
+    accSection('tower', '試煉之塔', '第 ' + ((D.rpg.tower && D.rpg.tower.best) || 0) + ' 層', towerHTML()) +
+
+    accSection('achievements', '成就徽章', badgeCount + ' / ' + ACHIEVEMENTS.length, achievementsHTML()) +
 
     accSection('subject', '分科屬性', '', 
       infoBox('科目讀得越熟（複習到「熟練」的題目占比），對應屬性星級越高，提供永久小額加成。') +
@@ -2177,28 +2277,6 @@ function bonusLabel(cfg, stars){
   if (cfg.effect === 'goldPct') return '+' + v + '% 金幣';
   if (cfg.effect === 'xpPct') return '+' + v + '% 經驗';
   return '';
-}
-function careerHTML(){
-  var totalCorrect = computeTotalCorrect();
-  var cells = [
-    ['📝', '累計答對題數', totalCorrect],
-    ['⚔️', '累計擊敗怪物', D.rpg.wins || 0],
-    ['🔥', '歷史最高連勝', D.rpg.bestWinStreak || 0],
-    ['📅', '累計使用天數', D.days.length],
-    ['🗓️', '目前連續天數', streak()],
-    ['💰', '累計獲得金幣', D.rpg.lifetimeGold || 0],
-  ];
-  var grid = '<div class="careerGrid">' + cells.map(function(c){
-    return '<div class="careerCell"><span class="careerIcon">' + c[0] + '</span>' +
-      '<span class="careerVal">' + c[2] + '</span><span class="careerLab">' + c[1] + '</span></div>';
-  }).join('') + '</div>';
-  var subjectRows = EXAM_NAMES.map(function(name){
-    var m = subjectMastery(name);
-    if (!m.total) return '';
-    return '<div class="row"><div><div class="lab">' + esc(name) + '</div>' +
-      '<div class="hint">已熟練 ' + m.mature + ' / ' + m.total + ' 題</div></div></div>';
-  }).join('');
-  return grid + (subjectRows ? '<p class="hint" style="margin:12px 0 6px">各科熟練進度：</p><div class="card">' + subjectRows + '</div>' : '');
 }
 function subjectAttrHTML(){
   var rows = Object.keys(SUBJECT_ATTR).map(function(name){
@@ -2273,12 +2351,10 @@ function dollHTML(){
     var id = getEquippedId(s.dataSlot, s.idx), it = itemById(id);
     var filled = !!it, active = ADV_SLOT_OPEN === s.key;
     var lv = filled ? enchantLevel(id) : 0;
-    var evolved = filled && D.rpg.evolved && D.rpg.evolved[id];
     var tierDot = (filled && lv) ? '<span class="dollTierDot" style="background:' + enchantTierFor(lv).color + '" title="' + enchantTierFor(lv).name + '（+' + lv + '）"></span>' : '';
-    var evolveBadge = evolved ? '<span class="dollEvolveBadge" title="已進化">✨</span>' : '';
     return '<button class="dollSlot' + (filled ? ' filled rarity-' + it.rarity : '') + (active ? ' active' : '') + '"' +
       ' data-doll="' + s.key + '" aria-label="' + s.label + '">' +
-      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') + tierDot + evolveBadge +
+      (filled ? it.icon : '<span class="dollEmpty">' + s.icon + '</span>') + tierDot +
     '</button>';
   }).join('');
   var body = '<div class="dollWrap"><div class="dollBody">' + D.rpg.avatar + '</div>' + slotBtns + '</div>';
@@ -2304,15 +2380,7 @@ function slotDetailHTML(key){
     var stones = D.rpg.enchantStone || 0, crystals = D.rpg.breakStone || 0;
     var noteHtml = '', actionsHtml;
     if (maxed){
-      var evolved = !!(D.rpg.evolved && D.rpg.evolved[id]);
-      if (it.rarity === 'mythic' && !evolved){
-        var canEvolve = crystals >= EVOLVE_CRYSTAL_COST && D.rpg.gold >= EVOLVE_GOLD_COST;
-        noteHtml = '<div class="breakNote">✨ 已達最高等級，消耗 <b>' + EVOLVE_CRYSTAL_COST + '顆突破結晶🔮</b> 與 <b>' + EVOLVE_GOLD_COST + '金幣</b> 可以進化為真裝，額外提升15%數值並改變外觀' +
-          (crystals < EVOLVE_CRYSTAL_COST ? '（目前只有 ' + crystals + ' 顆突破結晶）' : '') + '</div>';
-        actionsHtml = '<button class="btn tiny evolve" data-evolve="' + id + '"' + (canEvolve ? '' : ' disabled') + '>✨ 進化 💰' + EVOLVE_GOLD_COST + '</button>';
-      } else {
-        actionsHtml = '<span class="owned">' + (evolved ? '✨ 已進化・已滿級' : '已滿級') + '</span>';
-      }
+      actionsHtml = '<span class="owned">已滿級</span>';
     } else if (needsBreak){
       var canBreak = mats.length >= 2 && D.rpg.gold >= cost;
       var canBreakCrystal = crystals >= 2 && D.rpg.gold >= cost;
@@ -2329,7 +2397,7 @@ function slotDetailHTML(key){
     html += '<div class="itRow2 rarity-' + it.rarity + '">' +
       '<div class="itTop">' +
         '<span class="itIcon">' + it.icon + '</span>' +
-        '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(it, id)) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+        '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
         '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
         '<button class="btn sec tiny" data-doll-unequip="' + key + '">卸下</button>' +
       '</div>' +
@@ -2345,7 +2413,7 @@ function slotDetailHTML(key){
         var i = itemById(iid), l = enchantLevel(iid);
         return '<div class="itRow rarity-' + i.rarity + '">' +
           '<span class="itIcon">' + i.icon + '</span>' +
-          '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(i, iid)) + enchBadge(l) + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+          '<span class="itInfo"><span class="itName">' + esc(i.name) + enchBadge(l) + (i.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
           '<span class="itStat">' + statTextForInstance(i, iid) + '</span></span>' +
           '<button class="btn tiny sec" data-equip-to="' + key + '|' + iid + '">裝備</button>' +
         '</div>';
@@ -2387,7 +2455,7 @@ function invRowHTML(id){
   return '<div class="itRow2 rarity-' + it.rarity + '">' +
     '<div class="itTop">' +
       '<span class="itIcon">' + it.icon + '</span>' +
-      '<span class="itInfo"><span class="itName">' + esc(itemDisplayName(it, id)) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
+      '<span class="itInfo"><span class="itName">' + esc(it.name) + enchBadge(lv) + (it.bossExclusive ? ' <span class="mythTag">首領專屬</span>' : '') + '</span>' +
       '<span class="itStat">' + statTextForInstance(it, id) + '</span></span>' +
       '<button class="btn tiny sec" data-equip="' + id + '"' + (equipped ? ' disabled' : '') + '>' + (equipped ? '已裝備' : '裝備') + '</button>' +
     '</div>' +
@@ -2527,6 +2595,7 @@ function bindAdventureEvents(){
       D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
+      trackDaily('enchants');
       save(); checkAchievements(); renderAdventureKeepScroll();
     };
   });
@@ -2541,6 +2610,7 @@ function bindAdventureEvents(){
       D.rpg.enchantStone -= 1;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
+      trackDaily('enchants');
       save(); checkAchievements(); renderAdventureKeepScroll();
     };
   });
@@ -2586,6 +2656,7 @@ function bindAdventureEvents(){
       D.rpg.gold -= fuseCost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
+      trackDaily('enchants');
       save(); checkAchievements(); renderAdventureKeepScroll();
     };
   });
@@ -2609,6 +2680,7 @@ function bindAdventureEvents(){
       D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
+      trackDaily('enchants');
       save(); checkAchievements(); renderAdventureKeepScroll();
       var newTier = enchantTierFor(lv + 1);
       setTimeout(function(){
@@ -2632,30 +2704,11 @@ function bindAdventureEvents(){
       D.rpg.gold -= cost;
       if (!D.rpg.enchant) D.rpg.enchant = {};
       D.rpg.enchant[id] = lv + 1;
+      trackDaily('enchants');
       save(); checkAchievements(); renderAdventureKeepScroll();
       var newTier = enchantTierFor(lv + 1);
       setTimeout(function(){
         alert('⚡ 突破成功！\n「' + it.name + '」躍升至【' + newTier.name + '】階段（+' + (lv + 1) + '）！');
-      }, 50);
-    };
-  });
-  Array.prototype.forEach.call(document.querySelectorAll('[data-evolve]'), function(b){
-    b.onclick = function(){
-      var id = b.dataset.evolve, it = itemById(id);
-      if (!it || it.rarity !== 'mythic') return;
-      var lv = enchantLevel(id);
-      if (lv < ENCHANT_MAX) return;
-      if (D.rpg.evolved && D.rpg.evolved[id]) return;
-      if ((D.rpg.breakStone || 0) < EVOLVE_CRYSTAL_COST || D.rpg.gold < EVOLVE_GOLD_COST) return;
-      var msg = '消耗 ' + EVOLVE_CRYSTAL_COST + ' 顆突破結晶與 ' + EVOLVE_GOLD_COST + ' 金幣，讓「' + it.name + '」進化嗎？進化後數值再提升15%，且無法復原。';
-      if (!confirm(msg)) return;
-      D.rpg.breakStone -= EVOLVE_CRYSTAL_COST;
-      D.rpg.gold -= EVOLVE_GOLD_COST;
-      if (!D.rpg.evolved) D.rpg.evolved = {};
-      D.rpg.evolved[id] = true;
-      save(); checkAchievements(); renderAdventureKeepScroll();
-      setTimeout(function(){
-        alert('✨ 進化成功！\n「' + it.name + '」蛻變為「' + itemDisplayName(it, id) + '」！');
       }, 50);
     };
   });
@@ -2679,6 +2732,17 @@ function bindAdventureEvents(){
         if (!pool.length) return;
         startBattle(pool, 'exam', name);
       }
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-claim-quest]'), function(b){
+    b.onclick = function(){
+      if (claimQuest(b.dataset.claimQuest)) renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tower-challenge]'), function(b){
+    b.onclick = function(){
+      var n = parseInt(b.dataset.towerChallenge, 10);
+      if (n) startTowerBattle(n);
     };
   });
 }
@@ -2767,6 +2831,70 @@ function monsterFor(kind, label, n){
     goldMult:tier.goldMult, xpMult:tier.xpMult, bossKey: tier.key === 'boss' ? bossKey : null };
 }
 
+/* ===================== 冒險：試煉之塔 ===================== */
+/* 樓層每 6 層循環一次六大考科，每 5 層是一位「塔層守護者」（強度較高、獎勵更好）。
+   只有打贏「目前最高可挑戰樓層」才會往上爬；重複挑戰已通關樓層仍可拿獎勵，但不會前進。 */
+function towerFloorConfig(n){
+  var exam = EXAM_NAMES[(n - 1) % EXAM_NAMES.length];
+  var isBoss = n % 5 === 0;
+  var baseHp = 26 + n * 9, baseAtk = 4 + Math.floor(n * 1.1);
+  return {
+    floor:n, exam:exam, isBoss:isBoss,
+    hp: Math.round(baseHp * (isBoss ? 1.6 : 1)),
+    atk: Math.round(baseAtk * (isBoss ? 1.25 : 1))
+  };
+}
+function startTowerBattle(n){
+  var cfg = towerFloorConfig(n);
+  var srcPool = BANK.filter(function(q){ return q.exam === cfg.exam; });
+  if (!srcPool.length) srcPool = BANK.slice();
+  if (!srcPool.length) return;
+  var queue = srcPool.map(function(q){ return q.id; });
+  queue.sort(function(){ return Math.random() - .5; });
+  queue = queue.slice(0, Math.min(15, queue.length));
+  var maxHp = rpgMaxHp();
+  S = {
+    mode:'battle', label:'試煉之塔・第 ' + n + ' 層',
+    monster:{
+      name:(cfg.isBoss ? '塔層守護者・' : '試煉魔像・') + cfg.exam,
+      icon:cfg.isBoss ? '🗿' : examIcon(cfg.exam),
+      hp:cfg.hp, maxHp:cfg.hp, atk:cfg.atk,
+      tier: cfg.isBoss ? 'boss' : 'normal',
+      tierLabel: cfg.isBoss ? '塔層守護者' : '',
+      tagIcon: cfg.isBoss ? '👑' : '', tagClass: cfg.isBoss ? 'tier-boss' : '',
+      goldMult:1 + n * 0.04, xpMult:1 + n * 0.04, bossKey:null
+    },
+    queue:queue, qIndex:0,
+    id:null, pick:null, cut:[], unsure:false, graded:false,
+    playerHp:maxHp, playerMaxHp:maxHp,
+    n:0, right:0, ms:0, qStart:0, combo:0,
+    lastReward:null, lastDmg:0, lastTaken:0,
+    towerFloor:n
+  };
+  nextBattleQ();
+}
+function towerHTML(){
+  if (!D.rpg.tower) D.rpg.tower = { best:0 };
+  var best = D.rpg.tower.best || 0, cur = best + 1, curCfg = towerFloorConfig(cur);
+  var rows = '';
+  for (var i = Math.max(1, cur - 1); i <= cur + 3; i++){
+    var cfg = towerFloorConfig(i);
+    var state = i <= best ? 'cleared' : (i === cur ? 'current' : 'locked');
+    rows += '<div class="bar" style="opacity:' + (state === 'locked' ? '.55' : '1') + '">' +
+      '<div class="t" style="margin-bottom:0"><span>' +
+        (state === 'cleared' ? '✅ ' : (cfg.isBoss ? '👑 ' : '')) +
+        '第 ' + i + ' 層・' + examIcon(cfg.exam) + ' ' + esc(cfg.exam) +
+        (cfg.isBoss ? '（守護者）' : '') + '</span>' +
+      '<span class="r">' + (state === 'cleared' ? '已通關' : (state === 'current' ? '可挑戰' : '未解鎖')) + '</span></div>' +
+    '</div>';
+  }
+  return '<div class="card"><div class="row"><div><div class="lab">目前最高紀錄</div>' +
+      '<div class="hint">' + (best ? '第 ' + best + ' 層' : '尚未通關任何一層') + '</div></div></div></div>' +
+    '<div class="card" style="margin-top:8px">' + rows + '</div>' +
+    '<button class="btn" style="margin-top:10px" data-tower-challenge="' + cur + '">挑戰第 ' + cur + ' 層' + (curCfg.isBoss ? '（守護者關卡👑）' : '') + '</button>' +
+    '<p class="hint" style="margin:9px 2px 0">樓層依序循環六大考科出題，每 5 層是一位守護者，強度較高但獎勵更豐厚。重複挑戰已通關樓層仍有獎勵，但不會往上爬。</p>';
+}
+
 function startBattle(list, kind, label){
   if (!list.length) return;
   var queue = list.map(function(q){ return q.id; });
@@ -2851,6 +2979,7 @@ function battleGrade(q){
   var spent = Date.now() - S.qStart;
   var ok = S.pick === q.answer;
   var p = P(q.id);
+  var wasReviewed = p.seen > 0; // 每日任務用：本題先前已作答過，視為一次複習
   p.seen++; p.ms += spent; p.at = Date.now();
   if (ok) p.right++; else p.wrong++;
   if (S.unsure) p.unsure++;
@@ -2876,13 +3005,16 @@ function battleGrade(q){
   S.graded = true; S.lastMs = spent; S.n++; if (ok) S.right++; S.ms += spent;
   if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
   else { S.combo = 0; }
+  trackDaily('answered'); if (ok) trackDaily('correct'); if (wasReviewed) trackDaily('reviewed');
+  trackDailyMax('comboMax', S.combo || 0);
   save(); refreshBadge(); checkAchievements(); renderBattle();
 }
 
 function endBattle(result){
   stopClock();
   var m = S.monster, n = S.n, right = S.right, ms = S.ms;
-  var bonusGold, bonusXp, loot = null, streakBonusGold = 0, breakStone = 0;
+  var towerFloor = S.towerFloor || 0;
+  var bonusGold, bonusXp, loot = null, streakBonusGold = 0, breakStone = 0, towerAdvanced = false;
   if (result === 'victory'){
     bonusGold = Math.round((15 + Math.round(m.maxHp/3)) * (m.goldMult || 1));
     bonusXp = Math.round((10 + Math.round(m.maxHp/4)) * (m.xpMult || 1));
@@ -2890,6 +3022,7 @@ function endBattle(result){
     breakStone = rollBreakStone(m.tier);
     if (breakStone) D.rpg.breakStone = (D.rpg.breakStone || 0) + breakStone;
     D.rpg.wins = (D.rpg.wins || 0) + 1;
+    trackDaily('wins');
     D.rpg.winStreak = (D.rpg.winStreak || 0) + 1;
     if (D.rpg.winStreak > (D.rpg.bestWinStreak || 0)) D.rpg.bestWinStreak = D.rpg.winStreak;
     streakBonusGold = Math.round(bonusGold * Math.min(0.3, (D.rpg.winStreak - 1) * 0.03));
@@ -2909,6 +3042,16 @@ function endBattle(result){
       });
       D.rpg.bossLog = D.rpg.bossLog.slice(0, 20);
     }
+    if (towerFloor){
+      if (!D.rpg.tower) D.rpg.tower = { best:0 };
+      var floorBonusGold = 10 + towerFloor * 3, floorBonusXp = 6 + towerFloor * 2;
+      bonusGold += floorBonusGold; bonusXp += floorBonusXp;
+      if (towerFloor > D.rpg.tower.best){
+        D.rpg.tower.best = towerFloor;
+        towerAdvanced = true;
+        if (!loot && towerFloorConfig(towerFloor).isBoss) loot = rollLootForTier('elite');
+      }
+    }
   } else if (result === 'draw'){
     bonusGold = 5; bonusXp = 5; D.rpg.winStreak = 0;
   } else {
@@ -2921,10 +3064,10 @@ function endBattle(result){
   save(); refreshBadge();
   S = null;
   checkAchievements();
-  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone);
+  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced);
 }
 
-function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone){
+function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced){
   var title = result === 'victory' ? ('擊敗了' + (m.tagIcon ? m.tagIcon + ' ' : '') + '「' + esc(m.name) + '」！') : (result === 'draw' ? '怪物逃走了' : '你撤退了');
   var icon = result === 'victory' ? '🏆' : (result === 'draw' ? '💨' : '🏳️');
   $('#s-adventure').innerHTML =
@@ -2935,6 +3078,8 @@ function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, l
       '<div class="m" style="margin-top:8px">獲得 +' + bonusGold + '💰　+' + bonusXp + '⭐' + (leveled ? '　🎉升級！' : '') + '</div>' +
       (result === 'victory' && D.rpg.winStreak > 1 ? '<div class="m">🔥 連勝 ' + D.rpg.winStreak + ' 場' + (streakBonusGold ? '（連勝加成 +' + streakBonusGold + '💰）' : '') + '</div>' : '') +
       (result !== 'victory' ? '<div class="hint" style="margin-top:4px">連勝紀錄已中斷，下次再挑戰吧。</div>' : '') +
+      (towerFloor ? '<div class="m">🗼 試煉之塔 第 ' + towerFloor + ' 層' +
+        (result !== 'victory' ? '　挑戰失敗，樓層不會前進' : (towerAdvanced ? '　晉級成功！下一層已解鎖' : '　重複通關（不計入晉級）')) + '</div>' : '') +
       (loot ? '<div class="lootBox rarity-' + loot.rarity + '"><span class="itIcon">' + loot.icon + '</span>掉落「' + esc(loot.name) + '」' + (statText(loot) ? '　' + statText(loot) : '') + '</div>' : '') +
       (breakStone ? '<div class="lootBox crystalBox">🔮 獲得 ' + breakStone + ' 顆突破結晶</div>' : '') +
     '</div>' +
@@ -2989,17 +3134,20 @@ $('#themeBtn').onclick = cycleTheme;
       D.rpg = Object.assign({}, DEF_RPG, saved.rpg || {});
       D.rpg.equip = migrateEquip(Object.assign({}, DEF_RPG.equip, (saved.rpg && saved.rpg.equip) || {}));
       D.rpg.enchant = Object.assign({}, (saved.rpg && saved.rpg.enchant) || {});
-      D.rpg.evolved = Object.assign({}, (saved.rpg && saved.rpg.evolved) || {});
       D.rpg.bossKills = Object.assign({}, (saved.rpg && saved.rpg.bossKills) || {});
       D.rpg.bossLog = (saved.rpg && Array.isArray(saved.rpg.bossLog)) ? saved.rpg.bossLog.slice() : [];
       if (!Array.isArray(D.rpg.inv)) D.rpg.inv = [];
       D.rpg.badges = (saved.rpg && Array.isArray(saved.rpg.badges)) ? saved.rpg.badges.slice() : [];
+      D.rpg.tower = Object.assign({ best:0 }, (saved.rpg && saved.rpg.tower) || {});
+      D.rpg.daily = (saved.rpg && saved.rpg.daily) ? Object.assign({}, saved.rpg.daily) : null;
+      D.rpg.quests = (saved.rpg && saved.rpg.quests) ? Object.assign({}, saved.rpg.quests, { list:(saved.rpg.quests.list || []).slice() }) : null;
     } else {
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll((savedBank && savedBank.length) ? savedBank : SEED.slice());
       if (!savedBank || !savedBank.length) saveBank();
-      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, evolved:{}, inv:[], badges:[], bossKills:{}, bossLog:[] });
+      D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[], tower:{ best:0 }, daily:null, quests:null });
     }
+    ensureDailyQuests();
     save();
     applyTheme(D.settings.theme || 'auto');
     renderDrill();
