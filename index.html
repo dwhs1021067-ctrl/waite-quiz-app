@@ -784,12 +784,12 @@ var SEED = [
 var BANK = [];
 var DEF_SET = { subjects:[], parts:[], mode:'single', count:10, shuffle:true, limit:false, skipMature:true, theme:'auto', prioritizeNew:false };
 var DEF_RPG = {
-  level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{},
+  level:1, xp:0, gold:20, equip:{weapon:[],armor:null,helmet:null,boots:null,accessory:[]}, inv:[], enchant:{}, affix:{},
   avatar:'🧙', badges:[], wins:0, bestCombo:0, lifetimeGold:0,
   winStreak:0, bestWinStreak:0, bossKills:{}, bossLog:[],
   enchantStone:0, breakStone:0,
   daily:null, quests:null, dailyQuestStreak:0, bestDailyQuestStreak:0, lastQuestBonusDate:null,
-  tower:{ best:0 }
+  tower:{ best:0 }, battlesSinceLegendary:0
 };
 var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
 function migrateEquip(eq){
@@ -908,6 +908,85 @@ function enchBadge(lv){
   return ' <span class="ench" style="color:' + t.color + '">+' + lv + ' ' + t.name + '</span>';
 }
 
+/* ===================== RPG：詞綴系統 ===================== */
+/* 裝備強化到 +20（天啟滿級）之後才能附加/重鑄詞綴，讓金幣在強化封頂後還有地方去。
+   詞綴跟裝備本身的主屬性無關，任何欄位的裝備都可能骨出任何一種詞綴效果，
+   等於多一個「這件裝備本來是打傷害用的，但詞綴骨到金幣加成」的build多樣性。
+   詞綴只有在「裝備中」才會生效，跟裝備本身的主屬性規則一致。 */
+var AFFIX_POOL = [
+  { key:'atk',          label:'攻擊力',       icon:'⚔️', unit:'',  range:[2,5]  },
+  { key:'hp',           label:'生命值',       icon:'❤️', unit:'',  range:[15,35] },
+  { key:'goldPct',      label:'金幣加成',     icon:'💰', unit:'%', range:[4,10] },
+  { key:'xpPct',        label:'經驗加成',     icon:'⭐', unit:'%', range:[4,10] },
+  { key:'lootPct',      label:'掉寶率',       icon:'🎁', unit:'%', range:[4,10] },
+  { key:'dmgReduction', label:'傷害減免',     icon:'🛡️', unit:'%', range:[3,8]  },
+];
+var AFFIX_RARITY_SCALE = { common:1, rare:1.3, epic:1.6, legendary:2, mythic:2.5 };
+function affixDef(key){ return AFFIX_POOL.filter(function(a){ return a.key === key; })[0]; }
+function affixOf(id){ return (D.rpg.affix && D.rpg.affix[id]) || null; }
+function rollAffixValue(def, rarity){
+  var scale = AFFIX_RARITY_SCALE[rarity] || 1;
+  var raw = def.range[0] + Math.random() * (def.range[1] - def.range[0]);
+  return Math.max(1, Math.round(raw * scale));
+}
+function affixText(af){
+  if (!af) return '';
+  var def = affixDef(af.key);
+  if (!def) return '';
+  return def.icon + ' +' + af.value + def.unit + ' ' + def.label + '（詞綴）';
+}
+/* 附加詞綴／重鑄詞綴類型：花費較高，隨機骨出全新的詞綴種類與數值
+   微調數值：花費較低，詞綴種類不變，只重擲數值（結果只會在該詞綴的合理範圍內，不會變差到離譜） */
+function affixCraftCost(it, kind){
+  var rarityMult = { common:1, rare:1.6, epic:2.4, legendary:3.5, mythic:5.5 }[it.rarity] || 1;
+  var base = kind === 'tune' ? 60 : 200; // tune=微調數值，reroll=重鑄類型（含首次附加）
+  return Math.round(base * rarityMult);
+}
+function affixAdd(id){
+  var it = itemById(id); if (!it) return false;
+  var cost = affixCraftCost(it, 'reroll');
+  if (D.rpg.gold < cost) return false;
+  var def = AFFIX_POOL[Math.floor(Math.random() * AFFIX_POOL.length)];
+  D.rpg.gold -= cost;
+  if (!D.rpg.affix) D.rpg.affix = {};
+  D.rpg.affix[id] = { key: def.key, value: rollAffixValue(def, it.rarity) };
+  save(); checkAchievements();
+  return true;
+}
+function affixReroll(id){
+  var it = itemById(id); if (!it || !affixOf(id)) return false;
+  var cost = affixCraftCost(it, 'reroll');
+  if (D.rpg.gold < cost) return false;
+  var def = AFFIX_POOL[Math.floor(Math.random() * AFFIX_POOL.length)];
+  D.rpg.gold -= cost;
+  D.rpg.affix[id] = { key: def.key, value: rollAffixValue(def, it.rarity) };
+  save(); checkAchievements();
+  return true;
+}
+function affixTune(id){
+  var it = itemById(id); var af = affixOf(id); if (!it || !af) return false;
+  var cost = affixCraftCost(it, 'tune');
+  if (D.rpg.gold < cost) return false;
+  var def = affixDef(af.key); if (!def) return false;
+  D.rpg.gold -= cost;
+  D.rpg.affix[id] = { key: af.key, value: rollAffixValue(def, it.rarity) };
+  save();
+  return true;
+}
+function allEquippedIds(){
+  var eq = D.rpg.equip;
+  return equipList('weapon').concat(equipList('accessory'))
+    .concat(eq.armor ? [eq.armor] : [])
+    .concat(eq.helmet ? [eq.helmet] : [])
+    .concat(eq.boots ? [eq.boots] : []);
+}
+function affixBonusTotal(key){
+  return allEquippedIds().reduce(function(sum, id){
+    var af = affixOf(id);
+    return sum + (af && af.key === key ? af.value : 0);
+  }, 0);
+}
+
 /* ===================== RPG：造型與稱號 ===================== */
 var AVATARS = [
   { icon:'🧙', name:'學者',     unlockLv:1 },
@@ -956,6 +1035,8 @@ var ACHIEVEMENTS = [
   { id:'fullEnchant',name:'鍛造宗師',desc:'任一裝備強化至【神化】滿級（+12）', icon:'🌟', reward:{gold:250}, check:function(c){ return c.maxEnchant >= 12; } },
   { id:'revelation',name:'天啟降臨',desc:'任一裝備突破至【天啟】階段（+13）', icon:'✨', reward:{gold:300}, check:function(c){ return c.maxEnchant >= 13; } },
   { id:'revelationMax',name:'登峰造極',desc:'任一裝備強化至【天啟】滿級（+20）', icon:'🌈', reward:{gold:600}, check:function(c){ return c.maxEnchant >= 20; } },
+  { id:'firstAffix',name:'詞綴初探',desc:'為任一裝備附加第一個詞綴',           icon:'🔮', reward:{gold:100}, check:function(c){ return c.affixCount >= 1; } },
+  { id:'affixMaster',name:'鑄綴大師',desc:'同時有 4 件裝備附加了詞綴',        icon:'🌀', reward:{gold:300}, check:function(c){ return c.affixCount >= 4; } },
   { id:'legendary',name:'傳說收藏家',desc:'擁有一件傳說級裝備',       icon:'💎', reward:{gold:100}, check:function(c){ return c.hasLegendary; } },
   { id:'mythicFirst',name:'神器初現',desc:'獲得第一件首領專屬神器',  icon:'🔱', reward:{gold:150}, check:function(c){ return c.mythicCount >= 1; } },
   { id:'mythicAll',  name:'萬邦歸心',desc:'集齊全部首領專屬神器',    icon:'👑', reward:{gold:400}, check:function(c){ return c.mythicCount >= c.mythicTotal; } },
@@ -987,6 +1068,7 @@ function achievementContext(){
     mythicTotal: ITEMS.filter(function(i){ return i.rarity === 'mythic'; }).length,
     towerBest: (D.rpg.tower && D.rpg.tower.best) || 0,
     questStreak: D.rpg.dailyQuestStreak || 0,
+    affixCount: D.rpg.affix ? Object.keys(D.rpg.affix).length : 0,
   };
 }
 function checkAchievements(){
@@ -1092,32 +1174,32 @@ function rpgAtk(){
   var eq = equipList('weapon').reduce(function(sum, wid){
     var w = itemById(wid); return sum + (w ? itemStatValue(w, wid, 'atk') : 0);
   }, 0);
-  return base + eq + subjectBonusTotal('atk');
+  return base + eq + subjectBonusTotal('atk') + affixBonusTotal('atk');
 }
 function rpgMaxHp(){
   var base = 40 + D.rpg.level*8, aid = D.rpg.equip.armor, a = itemById(aid);
   var eq = a ? itemStatValue(a, aid, 'hp') : 0;
-  return base + eq + subjectBonusTotal('hp');
+  return base + eq + subjectBonusTotal('hp') + affixBonusTotal('hp');
 }
 function rpgGoldMult(){
   var eq = equipList('accessory').reduce(function(sum, cid){
     var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'goldPct') : 0);
   }, 0);
-  return 1 + (eq + subjectBonusTotal('goldPct'))/100;
+  return 1 + (eq + subjectBonusTotal('goldPct') + affixBonusTotal('goldPct'))/100;
 }
 function rpgXpMult(){
   var eq = equipList('accessory').reduce(function(sum, cid){
     var c = itemById(cid); return sum + (c ? itemStatValue(c, cid, 'xpPct') : 0);
   }, 0);
-  return 1 + (eq + subjectBonusTotal('xpPct'))/100;
+  return 1 + (eq + subjectBonusTotal('xpPct') + affixBonusTotal('xpPct'))/100;
 }
 function rpgLootBonus(){
   var hid = D.rpg.equip.helmet, h = itemById(hid);
-  return h ? itemStatValue(h, hid, 'lootPct') : 0;
+  return (h ? itemStatValue(h, hid, 'lootPct') : 0) + affixBonusTotal('lootPct');
 }
 function rpgDmgReduction(){
   var bid = D.rpg.equip.boots, b = itemById(bid);
-  var v = b ? itemStatValue(b, bid, 'dmgReduction') : 0;
+  var v = (b ? itemStatValue(b, bid, 'dmgReduction') : 0) + affixBonusTotal('dmgReduction');
   return Math.min(80, v);
 }
 /* ===================== RPG：每日任務 ===================== */
@@ -1256,6 +1338,8 @@ function statTextForInstance(it, id){
   if (it.xpPct) parts.push('+' + itemStatValue(it, id, 'xpPct') + '% 經驗');
   if (it.lootPct) parts.push('+' + itemStatValue(it, id, 'lootPct') + '% 掉寶率');
   if (it.dmgReduction) parts.push('-' + itemStatValue(it, id, 'dmgReduction') + '% 受傷');
+  var af = affixOf(id);
+  if (af) parts.push(affixText(af));
   return parts.join('・');
 }
 function rollPracticeLoot(){
@@ -1529,7 +1613,7 @@ function nextSingle(){
   var id = pickNext();
   if (!id){ endSingle(); return; }
   S.id = id; S.pick = null; S.cut = []; S.unsure = false; S.graded = false; S.qStart = Date.now();
-  S.mMon = miniMonsterFor(); S.lastLoot = null; S.lastStone = 0;
+  S.mMon = miniMonsterFor(); S.lastLoot = null; S.lastStone = 0; S.lastLootDupGold = 0;
   S.used.push(id);
   renderSingle();
 }
@@ -1559,6 +1643,9 @@ function renderSingle(){
       '</div>' +
       (S.graded && S.lastLoot
         ? '<div class="lootBox rarity-' + S.lastLoot.rarity + '"><span class="itIcon">' + S.lastLoot.icon + '</span>掉落「' + esc(S.lastLoot.name) + '」' + (statText(S.lastLoot) ? '　' + statText(S.lastLoot) : '') + '</div>'
+        : '') +
+      (S.graded && S.lastLootDupGold
+        ? '<div class="lootBox">🔁 掉落的裝備你已經有了，直接換算成 +' + S.lastLootDupGold + '💰</div>'
         : '') +
       (S.graded && S.lastStone
         ? '<div class="lootBox stoneBox">🔹 獲得 ' + S.lastStone + ' 顆強化石' + (S.lastStone > 1 ? '（弱點加成！）' : '') + '</div>'
@@ -1656,7 +1743,17 @@ function grade(q){
   var isWeak = ok && !S.unsure && priorLv <= 1; // 熟練度低（0～1階）代表這本來是你的弱點
   S.lastReward = rpgAward(ok, S.unsure, isWeak);
   S.lastLoot = ok ? rollPracticeLoot() : null;
-  if (S.lastLoot) D.rpg.inv.push(S.lastLoot.id);
+  S.lastLootDupGold = 0;
+  if (S.lastLoot){
+    if (D.rpg.inv.indexOf(S.lastLoot.id) < 0){
+      D.rpg.inv.push(S.lastLoot.id);
+    } else {
+      S.lastLootDupGold = sellValue(S.lastLoot);
+      D.rpg.gold += S.lastLootDupGold;
+      D.rpg.lifetimeGold = (D.rpg.lifetimeGold || 0) + S.lastLootDupGold;
+      S.lastLoot = null;
+    }
+  }
   S.lastStone = ok ? rollEnchantStone(isWeak) : 0;
   if (S.lastStone) D.rpg.enchantStone = (D.rpg.enchantStone || 0) + S.lastStone;
   if (ok){ S.combo = (S.combo||0) + 1; if (S.combo > (D.rpg.bestCombo||0)) D.rpg.bestCombo = S.combo; }
@@ -2310,6 +2407,7 @@ function renderAdventure(){
 
     accSection('challenge', '選擇挑戰', due ? due + ' 題待複習' : '',
       infoBox('答對造成傷害、答錯會被反擊；不論輸贏，作答紀錄與複習排程都會照常保存。遭遇的怪物強度隨機：普通／小怪機率較高，精英⭐與首領👑機率較低，但擊敗後經驗、金幣、掉寶稀有度與突破結晶🔮機率都更高（突破結晶用來突破裝備關卡，可取代消耗自己裝備當素材）。') +
+      '<p class="hint" style="margin:6px 2px 10px">🍀 保底機制：連續 ' + PITY_LEGENDARY + ' 場勝利沒拿到傳說裝備，下一次就會直接送你一件傳說裝備。目前已經 ' + (D.rpg.battlesSinceLegendary || 0) + ' 場沒拿到。</p>' +
       challengeCardsHTML(), true) +
 
 
@@ -2430,7 +2528,16 @@ function slotDetailHTML(key){
     var stones = D.rpg.enchantStone || 0, crystals = D.rpg.breakStone || 0;
     var noteHtml = '', actionsHtml;
     if (maxed){
-      actionsHtml = '<span class="owned">已滿級</span>';
+      var af = affixOf(id);
+      var addCost = affixCraftCost(it, 'reroll'), tuneCost = affixCraftCost(it, 'tune');
+      if (!af){
+        noteHtml = '<div class="breakNote">✨ 已滿級！可以花金幣幫這件裝備附加一個隨機詞綴（額外效果，跟裝備本身欄位無關，任何效果都可能骨到）。</div>';
+        actionsHtml = '<button class="btn tiny" data-affix-add="' + id + '"' + (D.rpg.gold < addCost ? ' disabled' : '') + '>🔮 附加詞綴 💰' + addCost + '</button>';
+      } else {
+        noteHtml = '<div class="breakNote">目前詞綴：' + affixText(af) + '</div>';
+        actionsHtml = '<button class="btn tiny sec" data-affix-tune="' + id + '"' + (D.rpg.gold < tuneCost ? ' disabled' : '') + '>🎯 微調數值 💰' + tuneCost + '</button>' +
+          '<button class="btn tiny" data-affix-reroll="' + id + '"' + (D.rpg.gold < addCost ? ' disabled' : '') + '>🌀 重鑄詞綴 💰' + addCost + '</button>';
+      }
     } else if (needsBreak){
       var req = breakthroughRequirement(lv);
       var canBreak = mats.length >= req.mats && D.rpg.gold >= cost;
@@ -2792,6 +2899,23 @@ function bindAdventureEvents(){
       }
     };
   });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-affix-add]'), function(b){
+    b.onclick = function(){
+      if (affixAdd(b.dataset.affixAdd)) renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-affix-tune]'), function(b){
+    b.onclick = function(){
+      if (affixTune(b.dataset.affixTune)) renderAdventureKeepScroll();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-affix-reroll]'), function(b){
+    b.onclick = function(){
+      var id = b.dataset.affixReroll;
+      if (!confirm('重鑄會把目前的詞綴整個換成新的隨機效果，確定要重鑄嗎？')) return;
+      if (affixReroll(id)) renderAdventureKeepScroll();
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll('[data-claim-quest]'), function(b){
     b.onclick = function(){
       if (claimQuest(b.dataset.claimQuest)) renderAdventureKeepScroll();
@@ -2838,12 +2962,18 @@ function pickMonsterTier(streak){
   }
   return tiers[0];
 }
+/* 掉落機率調整說明（2026-08）：原本傳說權重過低（普通怪僅1%、精英怪僅4%），
+   且全裝備只有5件傳說/5件史詩（每部位各1件），實際拿到特定部位傳說裝備的機率極低。
+   這次調整：提高史詩/傳說權重、略降普通/稀有權重（反正這兩級很快就會買/撿滿，重複掉落也不會少），
+   並搭配下方保底機制(PITY_LEGENDARY)，避免長期非洲人真的完全拿不到。 */
 var TIER_LOOT_WEIGHTS = {
-  weak:   { none:0.65, common:0.28, rare:0.06, epic:0.01, legendary:0.00 },
-  normal: { none:0.50, common:0.30, rare:0.14, epic:0.05, legendary:0.01 },
-  elite:  { none:0.30, common:0.24, rare:0.28, epic:0.14, legendary:0.04 },
-  boss:   { none:0.05, common:0.10, rare:0.30, epic:0.35, legendary:0.20 },
+  weak:   { none:0.65, common:0.24, rare:0.09, epic:0.02, legendary:0.00 },
+  normal: { none:0.48, common:0.24, rare:0.16, epic:0.09, legendary:0.03 },
+  elite:  { none:0.28, common:0.16, rare:0.28, epic:0.20, legendary:0.08 },
+  boss:   { none:0.05, common:0.05, rare:0.25, epic:0.35, legendary:0.30 },
 };
+/* 傳說保底：連續 N 場勝利都沒有拿到傳說裝備，下一次觸發即強制升級為傳說（優先給尚未擁有的部位） */
+var PITY_LEGENDARY = 60;
 function rollLootForTier(tierKey){
   var w = Object.assign({}, TIER_LOOT_WEIGHTS[tierKey] || TIER_LOOT_WEIGHTS.normal);
   var bonus = Math.min(0.9, rpgLootBonus() / 100);
@@ -3073,6 +3203,7 @@ function endBattle(result){
   var m = S.monster, n = S.n, right = S.right, ms = S.ms;
   var towerFloor = S.towerFloor || 0;
   var bonusGold, bonusXp, loot = null, streakBonusGold = 0, breakStone = 0, towerAdvanced = false;
+  var dupGold = 0, pityTriggered = false;
   if (result === 'victory'){
     bonusGold = Math.round((15 + Math.round(m.maxHp/3)) * (m.goldMult || 1));
     bonusXp = Math.round((10 + Math.round(m.maxHp/4)) * (m.xpMult || 1));
@@ -3110,6 +3241,28 @@ function endBattle(result){
         if (!loot && towerFloorConfig(towerFloor).isBoss) loot = rollLootForTier('elite');
       }
     }
+    /* 傳說保底：只在一般掉落（非首領固定專屬掉落）情境下觸發，避免蓋掉首領專屬神器的邏輯 */
+    if (!(m.tier === 'boss' && m.bossKey)){
+      D.rpg.battlesSinceLegendary = (D.rpg.battlesSinceLegendary || 0) + 1;
+      if (loot && loot.rarity === 'legendary'){
+        D.rpg.battlesSinceLegendary = 0;
+      } else if (D.rpg.battlesSinceLegendary >= PITY_LEGENDARY){
+        var legPool = ITEMS.filter(function(i){ return i.rarity === 'legendary'; });
+        var legUnowned = legPool.filter(function(i){ return D.rpg.inv.indexOf(i.id) < 0; });
+        var legPick = legUnowned.length ? legUnowned : legPool;
+        if (legPick.length){
+          loot = legPick[Math.floor(Math.random() * legPick.length)];
+          pityTriggered = true;
+          D.rpg.battlesSinceLegendary = 0;
+        }
+      }
+    }
+    /* 重複掉落補償：裝備如果已經擁有，不再是「白掉」，改成直接給等同分解價值的金幣 */
+    if (loot && D.rpg.inv.indexOf(loot.id) >= 0){
+      dupGold = sellValue(loot);
+      bonusGold += dupGold;
+      loot = null;
+    }
   } else if (result === 'draw'){
     bonusGold = 5; bonusXp = 5; D.rpg.winStreak = 0;
   } else {
@@ -3122,10 +3275,10 @@ function endBattle(result){
   save(); refreshBadge();
   S = null;
   checkAchievements();
-  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced);
+  renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced, dupGold, pityTriggered);
 }
 
-function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced){
+function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, leveled, streakBonusGold, breakStone, towerFloor, towerAdvanced, dupGold, pityTriggered){
   var title = result === 'victory' ? ('擊敗了' + (m.tagIcon ? m.tagIcon + ' ' : '') + '「' + esc(m.name) + '」！') : (result === 'draw' ? '怪物逃走了' : '你撤退了');
   var icon = result === 'victory' ? '🏆' : (result === 'draw' ? '💨' : '🏳️');
   $('#s-adventure').innerHTML =
@@ -3138,7 +3291,9 @@ function renderBattleResult(result, m, n, right, ms, bonusGold, bonusXp, loot, l
       (result !== 'victory' ? '<div class="hint" style="margin-top:4px">連勝紀錄已中斷，下次再挑戰吧。</div>' : '') +
       (towerFloor ? '<div class="m">🗼 試煉之塔 第 ' + towerFloor + ' 層' +
         (result !== 'victory' ? '　挑戰失敗，樓層不會前進' : (towerAdvanced ? '　晉級成功！下一層已解鎖' : '　重複通關（不計入晉級）')) + '</div>' : '') +
+      (pityTriggered ? '<div class="lootBox rarity-legendary">🍀 保底觸發！' + (loot ? ('直接送你「' + esc(loot.name) + '」') : '') + '</div>' : '') +
       (loot ? '<div class="lootBox rarity-' + loot.rarity + '"><span class="itIcon">' + loot.icon + '</span>掉落「' + esc(loot.name) + '」' + (statText(loot) ? '　' + statText(loot) : '') + '</div>' : '') +
+      (dupGold ? '<div class="lootBox">🔁 掉落的裝備你已經有了，直接換算成 +' + dupGold + '💰</div>' : '') +
       (breakStone ? '<div class="lootBox crystalBox">🔮 獲得 ' + breakStone + ' 顆突破結晶</div>' : '') +
     '</div>' +
     '<button class="btn" id="back">返回冒險</button>';
