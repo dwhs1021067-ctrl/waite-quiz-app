@@ -243,6 +243,12 @@ h2.sec:first-child{margin-top:14px}
 .infoBox[open] summary::after{content:'收起說明'}
 .infoBox .hint{margin:6px 0 0;padding:9px 11px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--tx-2);line-height:1.6}
 
+.dictCat{margin:0 0 8px}
+.dictCat summary{cursor:pointer;list-style:none;padding:11px 13px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);font-size:13.5px;font-weight:700;color:var(--tx-1);-webkit-tap-highlight-color:transparent}
+.dictCat summary::-webkit-details-marker{display:none}
+.dictCat[open] summary{border-radius:var(--r) var(--r) 0 0;border-bottom:none}
+
 .tip{font-size:12.5px;color:var(--tx-3);margin:0 0 14px;line-height:1.55}
 
 .opts{display:flex;flex-direction:column;gap:10px}
@@ -630,6 +636,8 @@ window.onerror = function(m, s, l){
 /* ===================== 儲存 ===================== */
 var KEY = 'waite-quiz-v2';
 var KEY_BANK = 'waite-quiz-v2-bank';
+var KEY_DICT = 'waite-quiz-v2-dict';
+var DICT = [];
 var Store = {
   ws: (typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function'),
   get: async function(){
@@ -653,9 +661,20 @@ var Store = {
     var s = JSON.stringify(arr);
     if (this.ws){ try { await window.storage.set(KEY_BANK, s); } catch(e){} }
     try { localStorage.setItem(KEY_BANK, s); } catch(e){}
+  },
+  getDict: async function(){
+    if (this.ws){ try { var r = await window.storage.get(KEY_DICT); if (r) return JSON.parse(r.value); } catch(e){} }
+    try { var v = localStorage.getItem(KEY_DICT); if (v) return JSON.parse(v); } catch(e){}
+    return null;
+  },
+  setDict: async function(arr){
+    var s = JSON.stringify(arr);
+    if (this.ws){ try { await window.storage.set(KEY_DICT, s); } catch(e){} }
+    try { localStorage.setItem(KEY_DICT, s); } catch(e){}
   }
 };
 function saveBank(){ Store.setBank(BANK); }
+function saveDict(){ Store.setDict(DICT); }
 
 /* ===================== 間隔重複 ===================== */
 var INTERVALS = [0,1,3,7,14,30], MAX_LV = 5, DAY = 86400000;
@@ -696,6 +715,14 @@ function normalize(q){
   return q;
 }
 function normalizeAll(a){ return (a || []).map(normalize); }
+function normalizeDict(a){
+  return (a || []).map(function(t){
+    return {
+      term: t.term || '', exam: t.exam || '', part: t.part || '', category: t.category || '',
+      definition: t.definition || '', aliases: Array.isArray(t.aliases) ? t.aliases : []
+    };
+  }).filter(function(t){ return t.term && t.definition; });
+}
 
 /* 顯示用：考科／子科目／主題串接 */
 function lineage(q){
@@ -791,7 +818,7 @@ var DEF_RPG = {
   daily:null, quests:null, dailyQuestStreak:0, bestDailyQuestStreak:0, lastQuestBonusDate:null,
   tower:{ best:0 }, battlesSinceLegendary:0
 };
-var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null };
+var D = { progress:{}, days:[], settings:{}, bank:null, rpg:null, errata:{} };
 function migrateEquip(eq){
   eq = eq || {};
   function toArr(v){
@@ -902,6 +929,79 @@ function enchantTierFor(lv){
   }
   return ENCHANT_TIERS[ENCHANT_TIERS.length - 1];
 }
+/* ===================== 勘誤回報 ===================== */
+/* 作答時如果覺得某題的答案或詳解有問題，可以在詳解畫面回報，記錄下當時的題幹/答案快照
+   （就算之後題庫內容被覆蓋更新，仍保留回報當下看到的樣子），方便之後整批拿去核對修正。
+   回報清單存在 D.errata（跟題庫、進度分開，備份/還原時會一併處理）。 */
+var ERRATA_OPEN = null; // 目前正在展開回報表單的題目id
+function ensureErrata(){ if (!D.errata) D.errata = {}; return D.errata; }
+function submitErrata(qid, note){
+  var q = BANK.filter(function(x){ return x.id === qid; })[0];
+  var e = ensureErrata();
+  e[qid] = {
+    note: note || '',
+    at: new Date().toISOString(),
+    exam: q ? q.exam : '', part: q ? q.part : '', stem: q ? q.stem : '',
+    answer: q ? KEYS[q.answer] : null
+  };
+  save();
+}
+function undoErrata(qid){
+  var e = ensureErrata();
+  delete e[qid];
+  save();
+}
+function errataHTML(q){
+  var rec = (D.errata || {})[q.id];
+  if (rec){
+    return '<div class="errataBox"><p class="hint" style="margin:0">🚩 已回報這題（' + esc((rec.at||'').slice(0,10)) + '），之後會整批核對修正。</p>' +
+      '<button class="btn tiny sec" data-errata-undo="' + q.id + '" style="margin-top:8px">取消回報</button></div>';
+  }
+  if (ERRATA_OPEN !== q.id){
+    return '<button class="btn tiny sec" data-errata-open="' + q.id + '" style="margin-top:10px">🚩 回報這題可能有誤</button>';
+  }
+  return '<div class="errataBox">' +
+    '<p class="hint" style="margin:0 0 6px">哪裡覺得怪怪的？（選填，之後比較好回頭處理）</p>' +
+    '<textarea id="errataNote" placeholder="例如：我覺得答案應該是C，不是B" style="min-height:60px"></textarea>' +
+    '<div style="display:flex;gap:8px;margin-top:8px">' +
+      '<button class="btn tiny" data-errata-submit="' + q.id + '" style="margin-top:0">送出回報</button>' +
+      '<button class="btn tiny sec" data-errata-cancel="1" style="margin-top:0">取消</button>' +
+    '</div>' +
+  '</div>';
+}
+function bindErrata(q, rerender){
+  var openBtn = document.querySelector('[data-errata-open]');
+  if (openBtn) openBtn.onclick = function(){ ERRATA_OPEN = q.id; rerender(); };
+  var cancelBtn = document.querySelector('[data-errata-cancel]');
+  if (cancelBtn) cancelBtn.onclick = function(){ ERRATA_OPEN = null; rerender(); };
+  var submitBtn = document.querySelector('[data-errata-submit]');
+  if (submitBtn) submitBtn.onclick = function(){
+    var noteEl = document.getElementById('errataNote');
+    submitErrata(submitBtn.dataset.errataSubmit, noteEl ? noteEl.value : '');
+    ERRATA_OPEN = null;
+    rerender();
+  };
+  var undoBtn = document.querySelector('[data-errata-undo]');
+  if (undoBtn) undoBtn.onclick = function(){
+    undoErrata(undoBtn.dataset.errataUndo);
+    rerender();
+  };
+}
+function errataListHTML(){
+  var e = D.errata || {}, ids = Object.keys(e);
+  if (!ids.length) return '<p class="hint" style="margin:0 2px">目前沒有回報中的題目。練習或打怪作答後，看到詳解如果覺得答案或說明怪怪的，可以點「回報這題可能有誤」。</p>';
+  ids.sort(function(a,b){ return (e[b].at || '').localeCompare(e[a].at || ''); });
+  return '<div class="card">' + ids.map(function(id){
+    var rec = e[id];
+    return '<div class="bar"><div class="t"><span>' + esc(rec.exam || '') + (rec.part ? '・' + esc(rec.part) : '') + '</span>' +
+        '<span class="r">' + esc((rec.at || '').slice(0,10)) + '</span></div>' +
+      '<p class="hint" style="margin:6px 2px 0">' + esc(rec.stem || id) + '（目前答案：' + esc(rec.answer || '') + '）</p>' +
+      (rec.note ? '<p class="hint" style="margin:4px 2px 0"><b>備註：</b>' + esc(rec.note) + '</p>' : '') +
+      '<div style="margin-top:8px"><button class="btn tiny sec warn" data-errata-remove="' + esc(id) + '">移除這筆回報</button></div>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+
 function enchBadge(lv){
   if (!lv) return '';
   var t = enchantTierFor(lv);
@@ -1680,6 +1780,7 @@ function renderSingle(){
   var nx = $('#nx'), st = $('#stop');
   if (nx) nx.onclick = function(){ nextSingle(); };
   if (st) st.onclick = function(){ endSingle(); };
+  if (S.graded) bindErrata(q, renderSingle);
 
   S.graded ? stopClock() : startClock();
   window.scrollTo(0,0);
@@ -1795,6 +1896,7 @@ function solHTML(q){
           '</div>'
         : '') +
       '<div class="sched">' + nx + '</div>' +
+      errataHTML(q) +
     '</div>';
 }
 
@@ -2145,6 +2247,40 @@ var TPL = '[\n' +
 '  }\n' +
 ']';
 
+var DICT_SEARCH = '';
+function dictHTML(){
+  if (!DICT.length){
+    return '<p class="hint" style="margin:0 2px">目前還沒有辭典資料。用上方「匯入題目」同一個功能（選擇檔案或貼上文字）匯入辭典 JSON 檔即可，系統會自動辨識這是辭典還是題庫，不會互相覆蓋。</p>';
+  }
+  var q = DICT_SEARCH.trim().toLowerCase();
+  var filtered = DICT.filter(function(t){
+    if (!q) return true;
+    var hay = (t.term + ' ' + t.definition + ' ' + (t.aliases || []).join(' ')).toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+  if (!filtered.length) return '<p class="hint" style="margin:0 2px">沒有符合「' + esc(DICT_SEARCH) + '」的詞條。</p>';
+
+  var groups = {}, order = [];
+  filtered.forEach(function(t){
+    var partLabel = t.part ? (t.exam + '・' + t.part) : (t.exam || '未分類');
+    var catKey = t.category || '其他';
+    var key = partLabel + '|||' + catKey;
+    if (!groups[key]){ groups[key] = { partLabel:partLabel, catKey:catKey, terms:[] }; order.push(key); }
+    groups[key].terms.push(t);
+  });
+  return order.map(function(key){
+    var g = groups[key];
+    return '<details class="dictCat"' + (q ? ' open' : '') + '>' +
+      '<summary>' + esc(g.partLabel) + '　' + esc(g.catKey) + '（' + g.terms.length + '）</summary>' +
+      '<div class="card" style="margin-top:8px">' + g.terms.map(function(t){
+        return '<div class="bar"><div class="t"><span><b>' + esc(t.term) + '</b>' +
+          (t.aliases && t.aliases.length ? '<span class="hint">　（' + t.aliases.map(esc).join('／') + '）</span>' : '') +
+          '</span></div><p class="hint" style="margin:6px 2px 0">' + esc(t.definition) + '</p></div>';
+      }).join('') + '</div>' +
+    '</details>';
+  }).join('');
+}
+
 function renderBank(){
   var flagged = BANK.filter(function(q){ return q.legal && q.legal.flagged; }).length;
   $('#s-bank').innerHTML =
@@ -2164,6 +2300,16 @@ function renderBank(){
         (subLine ? '<div class="hint" style="margin-top:7px">' + subLine + '</div>' : '') +
         '<div class="hint" style="margin-top:6px">' + esc(e.note) + '</div></div>';
     }).join('') + '</div>' +
+
+    '<h2 class="sec">📖 小辭典' + (DICT.length ? '（' + DICT.length + ' 個詞條）' : '') + '</h2>' +
+    '<div class="card" style="padding:12px 15px">' +
+      '<input type="text" id="dictSearch" placeholder="搜尋詞彙…" value="' + esc(DICT_SEARCH) + '" style="width:100%;box-sizing:border-box">' +
+    '</div>' +
+    '<div style="margin-top:8px">' + dictHTML() + '</div>' +
+
+    '<h2 class="sec">勘誤回報' + (Object.keys(D.errata || {}).length ? '（' + Object.keys(D.errata).length + '）' : '') + '</h2>' +
+    errataListHTML() +
+    (Object.keys(D.errata || {}).length ? '<button class="btn sec tiny" id="expErrata" style="margin-top:8px">匯出勘誤清單</button>' : '') +
 
     '<h2 class="sec">匯入題目</h2>' +
     '<div class="card"><div class="pad">' +
@@ -2213,13 +2359,38 @@ function renderBank(){
     reader.readAsText(f, 'utf-8');
   };
   $('#exp').onclick = function(){
-    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days, rpg:D.rpg }, null, 2)], { type:'application/json' });
+    var blob = new Blob([JSON.stringify({ _backup:true, bank:BANK, progress:D.progress, days:D.days, rpg:D.rpg, errata:D.errata || {}, dict:DICT }, null, 2)], { type:'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'waite-quiz-backup-' + today() + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     $('#m2').innerHTML = '<div class="msg ok">備份檔已下載。</div>';
   };
+  var expErrataBtn = $('#expErrata');
+  if (expErrataBtn) expErrataBtn.onclick = function(){
+    var list = Object.keys(D.errata || {}).map(function(id){ return Object.assign({ id:id }, D.errata[id]); });
+    var blob = new Blob([JSON.stringify(list, null, 2)], { type:'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'waite-quiz-errata-' + today() + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  var dictSearchEl = $('#dictSearch');
+  if (dictSearchEl){
+    dictSearchEl.oninput = function(){
+      DICT_SEARCH = dictSearchEl.value;
+      var y = window.scrollY;
+      renderBank();
+      var el = $('#dictSearch'); if (el){ el.focus(); el.selectionStart = el.selectionEnd = el.value.length; }
+      window.scrollTo(0, y);
+    };
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-errata-remove]'), function(b){
+    b.onclick = function(){
+      undoErrata(b.dataset.errataRemove);
+      renderBank();
+    };
+  });
   $('#c1').onclick = function(){
     if (!confirm('清除所有作答紀錄與複習排程？題庫會保留。')) return;
     D.progress = {}; D.days = []; save(); refreshBadge(); renderBank();
@@ -2228,7 +2399,7 @@ function renderBank(){
   $('#c2').onclick = function(){
     if (!confirm('題庫與所有進度都會刪除，回到初始範例題。確定嗎？')) return;
     BANK = normalizeAll(SEED.slice());
-    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET),
+    D = { progress:{}, days:[], settings:Object.assign({}, DEF_SET), errata:{},
       rpg: Object.assign({}, DEF_RPG, { equip:{ weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[], tower:{ best:0 }, daily:null, quests:null }) };
     saveBank(); save(); refreshBadge(); renderBank(); renderDrill();
   };
@@ -2255,11 +2426,26 @@ function doImport(rawText){
     D.rpg.tower = Object.assign({ best:0 }, (obj.rpg && obj.rpg.tower) || {});
     D.rpg.daily = (obj.rpg && obj.rpg.daily) ? Object.assign({}, obj.rpg.daily) : null;
     D.rpg.quests = (obj.rpg && obj.rpg.quests) ? Object.assign({}, obj.rpg.quests, { list:(obj.rpg.quests.list || []).slice() }) : null;
+    D.errata = (obj.errata && typeof obj.errata === 'object') ? Object.assign({}, obj.errata) : (D.errata || {});
+    if (Array.isArray(obj.dict)) { DICT = normalizeDict(obj.dict); saveDict(); }
     ensureDailyQuests();
     saveBank(); save(); refreshBadge(); checkAchievements(); renderDrill();
     m.innerHTML = '<div class="msg ok">備份已還原：題庫 ' + BANK.length + ' 題，作答紀錄' +
       (obj.rpg ? '與冒險頁進度' : '') + '一併回復。' +
       (obj.rpg ? '' : '（這份備份檔不含冒險頁資料，角色已從預設值重新開始）') + '</div>';
+    $('#ta').value = ''; setTimeout(renderBank, 400); return;
+  }
+
+  // 小辭典匯入：陣列內每個項目都有 term/definition、且不是題目（沒有 stem），視為辭典檔
+  if (Array.isArray(obj) && obj.length && obj.every(function(x){ return x && x.term && x.definition && !x.stem; })){
+    var addD = 0, updD = 0;
+    obj.forEach(function(t){
+      var i = DICT.findIndex(function(x){ return x.term === t.term && x.exam === t.exam && x.part === t.part; });
+      if (i >= 0){ DICT[i] = t; updD++; } else { DICT.push(t); addD++; }
+    });
+    DICT = normalizeDict(DICT);
+    saveDict();
+    m.innerHTML = '<div class="msg ok">辭典已匯入：新增 ' + addD + ' 筆、更新 ' + updD + ' 筆，目前共 ' + DICT.length + ' 個詞條。</div>';
     $('#ta').value = ''; setTimeout(renderBank, 400); return;
   }
 
@@ -3153,6 +3339,7 @@ function renderBattle(){
     else if (S.playerHp <= 0) endBattle('defeat');
     else nextBattleQ();
   };
+  if (S.graded) bindErrata(q, renderBattle);
   S.graded ? stopClock() : startClock();
   window.scrollTo(0,0);
 }
@@ -3324,6 +3511,8 @@ $('#themeBtn').onclick = cycleTheme;
   try {
     var saved = await Store.get();
     var savedBank = await Store.getBank();
+    var savedDict = await Store.getDict();
+    DICT = normalizeDict(savedDict || []);
     if (saved){
       D.progress = saved.progress || {};
       D.days = saved.days || [];
@@ -3354,11 +3543,13 @@ $('#themeBtn').onclick = cycleTheme;
       D.rpg.tower = Object.assign({ best:0 }, (saved.rpg && saved.rpg.tower) || {});
       D.rpg.daily = (saved.rpg && saved.rpg.daily) ? Object.assign({}, saved.rpg.daily) : null;
       D.rpg.quests = (saved.rpg && saved.rpg.quests) ? Object.assign({}, saved.rpg.quests, { list:(saved.rpg.quests.list || []).slice() }) : null;
+      D.errata = (saved.errata && typeof saved.errata === 'object') ? Object.assign({}, saved.errata) : {};
     } else {
       D.settings = Object.assign({}, DEF_SET);
       BANK = normalizeAll((savedBank && savedBank.length) ? savedBank : SEED.slice());
       if (!savedBank || !savedBank.length) saveBank();
       D.rpg = Object.assign({}, DEF_RPG, { equip: { weapon:[], armor:null, helmet:null, boots:null, accessory:[] }, enchant:{}, inv:[], badges:[], bossKills:{}, bossLog:[], tower:{ best:0 }, daily:null, quests:null });
+      D.errata = {};
     }
     ensureDailyQuests();
     save();
